@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from numba import jit
+import time
 
 # ? change name cause it's not necessarily mandelbrot result?
-def mandelbrot(z0, c, iterations, sequence=False):
+@jit
+def mandelbrot_func(z0, c, iterations, sequence=False):
     k = 0
     z = [z0]
     while k < iterations:
@@ -14,26 +17,28 @@ def mandelbrot(z0, c, iterations, sequence=False):
     else:
         return z[-1]
 
+@jit
 def modulo(z):
     return np.sqrt((z.real)*(z.real) + (z.imag)*(z.imag))
 
-def generate_mandelbrot(z0, c_array, iterations, c_threshold, heights = False):
+@jit
+def generate_mandelbrot(z0, c_array, iterations, z_threshold, heights = False):
     mandelbrot_set = []
-    heigtmap = []
+    heightmap = []
 
     if heights:
         for c in c_array:
-            f = mandelbrot(z0, c, iterations)
-            if modulo(f) < c_threshold:
+            f = mandelbrot_func(z0, c, iterations)
+            if modulo(f) < z_threshold:
                 mandelbrot_set.append(c)
-                heigtmap.append(f)
+                heightmap.append(f)
         
-        return mandelbrot_set, heigtmap
+        return mandelbrot_set, heightmap
     
     else:
         for c in c_array:
-            f = mandelbrot(z0, c, iterations)
-            if modulo(f) < c_threshold:
+            f = mandelbrot_func(z0, c, iterations)
+            if modulo(f) < z_threshold:
                 #print(modulo(f))
                 mandelbrot_set.append(c)
 
