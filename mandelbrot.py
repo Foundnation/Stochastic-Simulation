@@ -48,9 +48,34 @@ def generate_mandelbrot(z0, c_array, iterations, iteration_bins, z_threshold, he
                 mandelbrot_set.append(c)
 
         return mandelbrot_set
-        
+
+def calculate_area(left_bound, right_bound, bottom_bound, top_bound, mand_set_length, sample_length):
+    S_rect = abs(right_bound - left_bound) * abs(top_bound - bottom_bound)
+    return mand_set_length /sample_length * S_rect
+
+def test_convergence(sample_size):
+    num_samples = 50
+    area_array = np.zeros((num_samples))
+    for i in range(num_samples):
+        c_shape = (1, sample_size)
+        left_bound, right_bound = -2, 1
+        bottom_bound, top_bound = -1, 1
+        c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
+
+        mand_set = generate_mandelbrot(0, c_arr, 100, 10, 4)
+        area = calculate_area(left_bound, right_bound, bottom_bound, top_bound, len(mand_set), len(c_arr))
+        area_array[i] = area
+
+    plt.plot([i for i in range(num_samples)], area_array)
+    plt.show()
+
 def main():
-    c_shape = (1, int(1E6))
+    test_convergence(int(1E4))
+
+
+
+def test():
+    c_shape = (1, int(1E5))
     left_bound, right_bound = -2, 1
     bottom_bound, top_bound = -1, 1
     c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
@@ -72,6 +97,7 @@ def main():
     colors = cmap(colormap)
     plt.scatter(x, y, c=colors, s=0.1)
     plt.show()
+
 
 
 
