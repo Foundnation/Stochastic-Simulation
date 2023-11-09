@@ -5,7 +5,7 @@ import time
 
 # ? change name cause it's not necessarily mandelbrot result?
 @jit
-def mandelbrot_func(z0, c, iterations, iteration_bins, sequence=False):
+def mandelbrot_func(z0, c, iterations, iter_step, sequence=False):
     k = 0
     z = [z0]
     while k < iterations:
@@ -14,8 +14,8 @@ def mandelbrot_func(z0, c, iterations, iteration_bins, sequence=False):
 
     z_bins = []
     if sequence:
-        z_step = int(len(z)/iteration_bins)
-        for i in range(iteration_bins):
+        z_step = len(z) // iter_step
+        for i in range(iter_step):
             z_bins.append(z[i * z_step])
 
         return z_bins
@@ -27,7 +27,7 @@ def modulo(z):
     return np.sqrt((z.real)*(z.real) + (z.imag)*(z.imag))
 
 @jit
-def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequence, heights = False):
+def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequence: bool, heights = False):
     mandelbrot_set = []
     heightmap = []
 
@@ -48,11 +48,18 @@ def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequenc
 
     # WORK IN PROGRESS
     elif heights == False and sequence == True :
+        print('here')
         for c in c_array:
             f_array = mandelbrot_func(z0, c, iterations, iter_step, sequence)
+            mandelbrot_set_array = np.empty((len(f_array)))
             for f in f_array:
-                if modulo(f) < z_threshold:
-                    mandelbrot_set.append(c)
+                f = []
+
+            print(f_array)
+
+            for i in len(f_array):
+                if modulo(f_array[i]) < z_threshold:
+                    mandelbrot_set_array[i].append(c)
 
         return mandelbrot_set
 
@@ -62,6 +69,14 @@ def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequenc
 def calculate_area(left_bound, right_bound, bottom_bound, top_bound, mand_set_length, sample_length):
     S_rect = abs(right_bound - left_bound) * abs(top_bound - bottom_bound)
     return mand_set_length /sample_length * S_rect
+
+def complex_random_array(left_bound, right_bound, bottom_bound, top_bound, length):
+    c_shape = (1, int(1E5))
+    left_bound, right_bound = -2, 1
+    bottom_bound, top_bound = -1, 1
+    c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
+
+    return c_arr
 
 def test_convergence(sample_size):
     num_samples = 50
@@ -80,7 +95,7 @@ def test_convergence(sample_size):
     plt.show()
 
 
-def test():
+def plot_mandelbrot():
     c_shape = (1, int(1E5))
     left_bound, right_bound = -2, 1
     bottom_bound, top_bound = -1, 1
@@ -104,9 +119,17 @@ def test():
     plt.scatter(x, y, c=colors, s=0.1)
     plt.show()
 
+def output_test():
+    length = int(1E5)
+    left_bound, right_bound = -2, 1
+    bottom_bound, top_bound = -1, 1
+    c_arr = complex_random_array(left_bound, right_bound, bottom_bound, top_bound, length)
+
+    generate_mandelbrot(0, c_arr, 100, 10, 2, True, False)
+
 
 def main():
-    test_convergence(int(1E5))
+    output_test()
 
 
 
