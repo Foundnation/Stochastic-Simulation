@@ -45,6 +45,7 @@ def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequenc
             f = mandelbrot_func(z0, c, iterations, iter_step, sequence)
             if modulo(f) < z_threshold:
                 mandelbrot_set.append(c)
+        return mandelbrot_set
 
     # WORK IN PROGRESS
     elif heights == False and sequence == True :
