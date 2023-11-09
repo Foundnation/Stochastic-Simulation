@@ -3,9 +3,8 @@ import matplotlib.pyplot as plt
 from numba import jit
 import time
 
-# ? change name cause it's not necessarily mandelbrot result?
-@jit
-def mandelbrot_func(z0, c, iterations, iter_step, sequence=False):
+#@jit
+def mandelbrot_func(z0, c, iterations, num_itermediate_steps, sequence=False):
     k = 0
     z = [z0]
     while k < iterations:
@@ -14,20 +13,23 @@ def mandelbrot_func(z0, c, iterations, iter_step, sequence=False):
 
     z_bins = []
     if sequence:
-        z_step = len(z) // iter_step
-        for i in range(iter_step):
-            z_bins.append(z[i * z_step])
-
+        z_step = len(z) // num_itermediate_steps
+        print('iter_step', num_itermediate_steps)
+        print('z_step', z_step)
+        for i in range(num_itermediate_steps):
+            z_bins.append(z[i * z_step - 1])
+            print(z[i * z_step])
+            print('z_bins', z_bins)
         return z_bins
     else:
         return z[-1]
 
-@jit
+#@jit
 def modulo(z):
     return np.sqrt((z.real)*(z.real) + (z.imag)*(z.imag))
 
-@jit
-def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequence: bool, heights = False):
+#@jit
+def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequence = False, heights = False):
     mandelbrot_set = []
     heightmap = []
 
@@ -49,23 +51,20 @@ def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequenc
 
     # WORK IN PROGRESS
     elif heights == False and sequence == True :
-        print('here')
         for c in c_array:
             f_array = mandelbrot_func(z0, c, iterations, iter_step, sequence)
-            mandelbrot_set_array = np.empty((len(f_array)))
-            for f in f_array:
-                f = []
+            mandelbrot_set_array = []
+            for i in range(len(f_array)):
+                mandelbrot_set_array.append([])
 
+            print('f_array')
+            print(len(f_array))
             print(f_array)
-
-            for i in len(f_array):
+            for i in range(len(f_array)):
                 if modulo(f_array[i]) < z_threshold:
                     mandelbrot_set_array[i].append(c)
 
-        return mandelbrot_set
-
-    
-
+        return mandelbrot_set_array
 
 def calculate_area(left_bound, right_bound, bottom_bound, top_bound, mand_set_length, sample_length):
     S_rect = abs(right_bound - left_bound) * abs(top_bound - bottom_bound)
@@ -79,8 +78,14 @@ def complex_random_array(left_bound, right_bound, bottom_bound, top_bound, lengt
 
     return c_arr
 
+
+
+
+
+""" *** Test Section *** """
+
 def test_convergence(sample_size):
-    num_samples = 50
+    num_samples = 10
     area_array = np.zeros((num_samples))
     for i in range(num_samples):
         c_shape = (1, sample_size)
@@ -102,7 +107,7 @@ def plot_mandelbrot():
     bottom_bound, top_bound = -1, 1
     c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
 
-    mand_set, colormap_complex = generate_mandelbrot(0, c_arr, 100, 10, 4, heights=True)
+    mand_set, colormap_complex = generate_mandelbrot(0, c_arr, 100, 10, 4, sequence=False, heights=True)
 
     x = [elem.real for elem in mand_set]
     y = [elem.imag for elem in mand_set]
@@ -121,16 +126,18 @@ def plot_mandelbrot():
     plt.show()
 
 def output_test():
-    length = int(1E5)
+    length = int(1E3)
     left_bound, right_bound = -2, 1
     bottom_bound, top_bound = -1, 1
     c_arr = complex_random_array(left_bound, right_bound, bottom_bound, top_bound, length)
 
-    generate_mandelbrot(0, c_arr, 100, 10, 2, True, False)
+    result = generate_mandelbrot(0, c_arr, 100, 10, 2, True, False)
+
+    print(result)
 
 
 def main():
-    output_test()
+    plot_mandelbrot()
 
 
 
