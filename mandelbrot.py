@@ -27,27 +27,37 @@ def modulo(z):
     return np.sqrt((z.real)*(z.real) + (z.imag)*(z.imag))
 
 @jit
-def generate_mandelbrot(z0, c_array, iterations, iteration_bins, z_threshold, heights = False):
+def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequence, heights = False):
     mandelbrot_set = []
     heightmap = []
 
-    if heights:
+    if heights == True and sequence == False:
         for c in c_array:
-            f = mandelbrot_func(z0, c, iterations, iteration_bins, sequence=False)
+            f = mandelbrot_func(z0, c, iterations, iter_step, sequence)
             if modulo(f) < z_threshold:
                 mandelbrot_set.append(c)
                 heightmap.append(f)
         
         return mandelbrot_set, heightmap
     
-    else:
+    elif heights == False and sequence == False:
         for c in c_array:
-            f = mandelbrot_func(z0, c, iterations, iteration_bins, sequence=False)
+            f = mandelbrot_func(z0, c, iterations, iter_step, sequence)
             if modulo(f) < z_threshold:
-                #print(modulo(f))
                 mandelbrot_set.append(c)
 
+    # WORK IN PROGRESS
+    elif heights == False and sequence == True :
+        for c in c_array:
+            f_array = mandelbrot_func(z0, c, iterations, iter_step, sequence)
+            for f in f_array:
+                if modulo(f) < z_threshold:
+                    mandelbrot_set.append(c)
+
         return mandelbrot_set
+
+    
+
 
 def calculate_area(left_bound, right_bound, bottom_bound, top_bound, mand_set_length, sample_length):
     S_rect = abs(right_bound - left_bound) * abs(top_bound - bottom_bound)
@@ -68,10 +78,6 @@ def test_convergence(sample_size):
 
     plt.plot([i for i in range(num_samples)], area_array)
     plt.show()
-
-def main():
-    test_convergence(int(1E4))
-
 
 
 def test():
@@ -97,6 +103,10 @@ def test():
     colors = cmap(colormap)
     plt.scatter(x, y, c=colors, s=0.1)
     plt.show()
+
+
+def main():
+    test_convergence(int(1E5))
 
 
 
