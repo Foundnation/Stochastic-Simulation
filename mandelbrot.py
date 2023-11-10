@@ -4,7 +4,7 @@ from numba import jit
 import time
 
 #@jit
-def mandelbrot_func(z0, c, iterations, num_itermediate_steps, sequence=False):
+def mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence=False):
     k = 0
     z = [z0]
     while k < iterations:
@@ -13,13 +13,13 @@ def mandelbrot_func(z0, c, iterations, num_itermediate_steps, sequence=False):
 
     z_bins = []
     if sequence:
-        z_step = len(z) // num_itermediate_steps
-        print('iter_step', num_itermediate_steps)
-        print('z_step', z_step)
-        for i in range(num_itermediate_steps):
-            z_bins.append(z[i * z_step - 1])
-            print(z[i * z_step])
-            print('z_bins', z_bins)
+        z_bins_length = len(z) // num_intermediate_steps
+        #print('z_bins_length', z_bins_length)
+        for i in range(num_intermediate_steps):
+            #print(i)
+            #print('i * z_bins_length', i * z_bins_length)
+            #print('z[i * z_bins_length]', z[i * z_bins_length])
+            z_bins.append(z[i * z_bins_length] - 1)
         return z_bins
     else:
         return z[-1]
@@ -29,13 +29,13 @@ def modulo(z):
     return np.sqrt((z.real)*(z.real) + (z.imag)*(z.imag))
 
 #@jit
-def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequence = False, heights = False):
+def generate_mandelbrot(z0, c_array, iterations, num_intermediate_steps, z_threshold, sequence = False, heights = False):
     mandelbrot_set = []
     heightmap = []
 
     if heights == True and sequence == False:
         for c in c_array:
-            f = mandelbrot_func(z0, c, iterations, iter_step, sequence)
+            f = mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence)
             if modulo(f) < z_threshold:
                 mandelbrot_set.append(c)
                 heightmap.append(f)
@@ -44,25 +44,29 @@ def generate_mandelbrot(z0, c_array, iterations, iter_step, z_threshold, sequenc
     
     elif heights == False and sequence == False:
         for c in c_array:
-            f = mandelbrot_func(z0, c, iterations, iter_step, sequence)
+            f = mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence)
             if modulo(f) < z_threshold:
                 mandelbrot_set.append(c)
         return mandelbrot_set
 
     # WORK IN PROGRESS
     elif heights == False and sequence == True :
-        for c in c_array:
-            f_array = mandelbrot_func(z0, c, iterations, iter_step, sequence)
-            mandelbrot_set_array = []
-            for i in range(len(f_array)):
-                mandelbrot_set_array.append([])
+        mandelbrot_set_array = []
+        len_f_array = num_intermediate_steps
+        for i in range(len_f_array):
+            mandelbrot_set_array.append([])
 
-            print('f_array')
-            print(len(f_array))
-            print(f_array)
-            for i in range(len(f_array)):
+        for c in c_array:
+            f_array = mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence)
+
+
+            #print('c = ', c)
+            for i in range(len_f_array):
+                #print('modulo(f) = ', modulo(f_array[i]))
+                #print('z_tr = ', z_threshold)
                 if modulo(f_array[i]) < z_threshold:
                     mandelbrot_set_array[i].append(c)
+            #print(mandelbrot_set_array)
 
         return mandelbrot_set_array
 
@@ -70,8 +74,8 @@ def calculate_area(left_bound, right_bound, bottom_bound, top_bound, mand_set_le
     S_rect = abs(right_bound - left_bound) * abs(top_bound - bottom_bound)
     return mand_set_length /sample_length * S_rect
 
-def complex_random_array(left_bound, right_bound, bottom_bound, top_bound, length):
-    c_shape = (1, int(1E5))
+def complex_random_array(length, left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
+    c_shape = (1, length)
     left_bound, right_bound = -2, 1
     bottom_bound, top_bound = -1, 1
     c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
@@ -125,19 +129,29 @@ def plot_mandelbrot():
     plt.scatter(x, y, c=colors, s=0.1)
     plt.show()
 
-def output_test():
-    length = int(1E3)
-    left_bound, right_bound = -2, 1
-    bottom_bound, top_bound = -1, 1
-    c_arr = complex_random_array(left_bound, right_bound, bottom_bound, top_bound, length)
+def intermediate_iterations_test():
+    """
+    Doesn't work for different iterations and intermediate_steps values, but for 100, 10 
+    seems to be correct
+    """
 
-    result = generate_mandelbrot(0, c_arr, 100, 10, 2, True, False)
+    c_arr = complex_random_array(length = int(1E5))
 
-    print(result)
+    iterations = 100
+    intermediate_steps = 10
+    result = generate_mandelbrot(0, c_arr, iterations, intermediate_steps, 2, True, False)
 
+    lengths = [len(x) for x in result]
+    #x = [i * intermediate_steps for i in range(iterations // intermediate_steps)]
+    plt.plot(lengths[1:])
+    plt.xlabel('iteration')
+    plt.ylabel('# of points in generated set')
+    plt.show()
+
+    print(lengths)
 
 def main():
-    plot_mandelbrot()
+    intermediate_iterations_test()
 
 
 
