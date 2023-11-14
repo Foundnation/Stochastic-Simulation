@@ -163,32 +163,73 @@ def intermediate_iterations_test():
     seems to be correct
     """
 
-    sample_size = int(1E5)
+    sample_size = int(1E4)
     c_arr = complex_random_array(length = sample_size)
 
-    iterations = 300
-    intermediate_steps = 30
-    result = generate_mandelbrot(0, c_arr, iterations, intermediate_steps, 2, True, False)
+    iterations = 100
+    intermediate_steps = 10
+    repetitions = 10
 
-    lengths = [len(x) for x in result]
+    mand_sets_array = []
+    for i in range(repetitions):
+        temp = generate_mandelbrot(0, c_arr, iterations, intermediate_steps, 2, True, False)
+        mand_sets_array.append(temp)
+    
+
+    lengths = [[] for i in range(len(mand_sets_array))]
+    for i, mand_sets in enumerate(mand_sets_array):
+        for x in mand_sets:
+            lengths[i].append(len(x))
+
+    averages = [0] * len(lengths[0])
+
+    for run in lengths:
+        for idx, val in enumerate(run):
+            averages[idx] += val
+
+    average_lengths = [avg / repetitions for avg in averages]
+
+    areas = [[] for i in range(len(mand_sets_array))]
+    for i, mand_sets in enumerate(mand_sets_array):
+        for x in mand_sets:
+            areas[i].append(calculate_area(len(x), sample_size))
+
+    average_temp = [0] * len(lengths[0])
+
+    for run in areas:
+        for idx, val in enumerate(run):
+            average_temp[idx] += val
+
+    average_areas = [avg / repetitions for avg in average_temp]
+
+
     #x = [i * intermediate_steps for i in range(iterations // intermediate_steps)]
-    plt.plot(lengths[1:])
+    plt.plot(average_lengths[1:])
+    plt.title(f'repetitions = {repetitions}')
     plt.xlabel('iteration / 10')
     plt.ylabel('# of points in generated set')
 
-    areas = [calculate_area(-2, 1, -1, 1, len(x), sample_size) for x in result]
-
     plt.figure()
+    plt.plot(average_areas[1:])
+    plt.title(f'repetitions = {repetitions}')
     plt.xlabel('iteration / 10')
-    plt.ylabel('area')
-    plt.plot(areas[1:])
-
-    plt.figure()
-    plt.xlabel('iteration / 10')
-    plt.ylabel('|dA|')
-    plt.plot(abs(np.diff(areas)))
-
+    plt.ylabel('# of points in generated set')
     plt.show()
+
+    # areas = [calculate_area(-2, 1, -1, 1, len(x), sample_size) for x in result]
+
+    # plt.figure()
+    # plt.xlabel('iteration / 10')
+    # plt.ylabel('area')
+    # plt.plot(areas[1:])
+
+    # plt.figure()
+    # plt.xlabel('iteration / 10')
+    # plt.ylabel('|dA|')
+    # plt.plot(abs(np.diff(areas)))
+
+    # plt.show()
+
 
 def area_vs_sample_size(sample_sizes, repititions, iterations, iteration_step):
     area_list = []
