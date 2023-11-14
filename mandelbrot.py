@@ -153,24 +153,36 @@ def plot_mandelbrot():
 
 def intermediate_iterations_test():
     """
-    Doesn't work for different iterations and intermediate_steps values, but for 100, 10 
+    Doesn't work for different iterations and intermediate_steps values, but for some
     seems to be correct
     """
 
-    c_arr = complex_random_array(length = int(1E5))
+    sample_size = int(1E5)
+    c_arr = complex_random_array(length = sample_size)
 
-    iterations = 100
-    intermediate_steps = 10
+    iterations = 300
+    intermediate_steps = 30
     result = generate_mandelbrot(0, c_arr, iterations, intermediate_steps, 2, True, False)
 
     lengths = [len(x) for x in result]
     #x = [i * intermediate_steps for i in range(iterations // intermediate_steps)]
     plt.plot(lengths[1:])
-    plt.xlabel('iteration')
+    plt.xlabel('iteration / 10')
     plt.ylabel('# of points in generated set')
-    plt.show()
 
-    print(lengths)
+    areas = [calculate_area(-2, 1, -1, 1, len(x), sample_size) for x in result]
+
+    plt.figure()
+    plt.xlabel('iteration / 10')
+    plt.ylabel('area')
+    plt.plot(areas[1:])
+
+    plt.figure()
+    plt.xlabel('iteration / 10')
+    plt.ylabel('|dA|')
+    plt.plot(abs(np.diff(areas)))
+
+    plt.show()
 
 def main():
     # intermediate_iterations_test()
