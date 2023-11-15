@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from numba import jit
-import time
+from pyDOE2 import lhs
+import scipy.stats as stats
 
-#@jit
 def mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence=False):
     k = 0
     z = [z0]
@@ -14,26 +13,20 @@ def mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence=False):
     z_bins = []
     if sequence:
         z_bins_length = len(z) // num_intermediate_steps
-        #print('z_bins_length', z_bins_length)
         for i in range(num_intermediate_steps):
-            #print(i)
-            #print('i * z_bins_length', i * z_bins_length)
-            #print('z[i * z_bins_length]', z[i * z_bins_length])
             z_bins.append(z[i * z_bins_length] - 1)
         return z_bins
     else:
         return z[-1]
 
-#@jit
 def modulo(z):
     return np.sqrt((z.real)*(z.real) + (z.imag)*(z.imag))
 
-#@jit
-def generate_mandelbrot(z0, c_array, iterations, num_intermediate_steps, z_threshold, sequence = False, heights = False):
+def generate_mandelbrot(z0, c_array, iterations, z_threshold, num_intermediate_steps = 0, sequence = False, heights = False):
     mandelbrot_set = []
     heightmap = []
 
-    if heights == True and sequence == False:
+    if sequence == False and heights == True:
         for c in c_array:
             f = mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence)
             if modulo(f) < z_threshold:
@@ -42,15 +35,14 @@ def generate_mandelbrot(z0, c_array, iterations, num_intermediate_steps, z_thres
         
         return mandelbrot_set, heightmap
     
-    elif heights == False and sequence == False:
+    elif  sequence == False and heights == False:
         for c in c_array:
             f = mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence)
             if modulo(f) < z_threshold:
                 mandelbrot_set.append(c)
         return mandelbrot_set
 
-    # WORK IN PROGRESS
-    elif heights == False and sequence == True :
+    elif sequence == True and heights == False:
         mandelbrot_set_array = []
         len_f_array = num_intermediate_steps
         for i in range(len_f_array):
@@ -59,71 +51,96 @@ def generate_mandelbrot(z0, c_array, iterations, num_intermediate_steps, z_thres
         for c in c_array:
             f_array = mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence)
 
-
-            #print('c = ', c)
             for i in range(len_f_array):
-                #print('modulo(f) = ', modulo(f_array[i]))
-                #print('z_tr = ', z_threshold)
                 if modulo(f_array[i]) < z_threshold:
                     mandelbrot_set_array[i].append(c)
-            #print(mandelbrot_set_array)
 
         return mandelbrot_set_array
 
-def calculate_area(left_bound, right_bound, bottom_bound, top_bound, mand_set_length, sample_length):
+def calculate_area(mand_set_length, sample_length, left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
     S_rect = abs(right_bound - left_bound) * abs(top_bound - bottom_bound)
-    return mand_set_length /sample_length * S_rect
+    return mand_set_length / sample_length * S_rect
 
-def complex_random_array(length, left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
-    c_shape = (1, length)
-    left_bound, right_bound = -2, 1
-    bottom_bound, top_bound = -1, 1
-    c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
+def complex_random_array(length, method = 'uniform', left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
 
-    return c_arr
+    if method == 'uniform':
+        c_shape = (1, length)
+        c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
 
+        return c_arr
+    
+    elif method == 'lhs':
+        # generate a Latin Hypercube Sample of real numbers in the interval [0, 1)
+        lhs_sample = lhs(2, length)
 
+        dimension_ranges = [(left_bound, right_bound), (bottom_bound, top_bound)] 
+        
+        scaled_lhs_samples = np.zeros((length, 2))
+        for i in range(2):
+            scaled_lhs_samples[:, i] = dimension_ranges[i][0] + lhs_sample[:, i] * (dimension_ranges[i][1] - dimension_ranges[i][0])
+
+        c_arr = np.vectorize(complex)(scaled_lhs_samples[:, 0], scaled_lhs_samples[:, 1])
+
+        return c_arr
+
+def estimate_confidence_interval(data, confidence_level):
+    sample_mean = np.mean(data)
+    sample_std = np.std(data, ddof=1)  # ddof=1 for sample standard deviation
+    num_samples = len(data)
+
+    degrees_of_freedom = num_samples - 1
+
+    # critical value from the t-distribution
+    alpha = 1 - confidence_level
+    t_critical = stats.t.ppf(1 - alpha / 2, degrees_of_freedom)
+
+    standard_error = sample_std / np.sqrt(num_samples)
+    margin_of_error = t_critical * standard_error
+
+    lower_bound = sample_mean - margin_of_error
+    upper_bound = sample_mean + margin_of_error
+
+    return [lower_bound, upper_bound]
+    
+def estimate_area(sample_size, num_runs, iterations, iteration_step, output_area_array = False):
+    area_array = np.zeros(num_runs)
+    for i in range(num_runs):
+        c_arr = complex_random_array(sample_size)
+
+        mand_set = generate_mandelbrot(z0=0, c_array=c_arr, iterations=iterations, z_threshold=2,
+                                        num_intermediate_steps=iteration_step, sequence=False, heights=False)
+        area = calculate_area(len(mand_set), len(c_arr))
+        area_array[i] = area
+
+    confidence_interval = estimate_confidence_interval(area_array, 0.95)
+
+    if output_area_array:
+        return np.mean(area_array), np.std(area_array), confidence_interval, area_array
+    else:
+        return np.mean(area_array), np.std(area_array), confidence_interval
 
 
 
 """ *** Test Section *** """
-
-def test_convergence(sample_size, num_samples, iterations, iteration_step):
-    area_array = np.zeros((num_samples))
-    for i in range(num_samples):
-        c_shape = (1, sample_size)
-        left_bound, right_bound = -2, 1
-        bottom_bound, top_bound = -1, 1
-        c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
-
-        mand_set = generate_mandelbrot(0, c_arr, iterations, iteration_step, 2, sequence=False, heights=False)
-        area = calculate_area(left_bound, right_bound, bottom_bound, top_bound, len(mand_set), len(c_arr))
-        area_array[i] = area
-
-    # plt.plot([i for i in range(num_samples)], area_array)
-    # plt.show()
-
-    return sample_size, np.mean(area_array), np.std(area_array)
-
-
-def iterations_vs_no_samples(sample_size, num_samples_list, iterations_list):
+    
+def iterations_vs_num_runs(sample_size, num_samples_list, iterations_list):
     area_array = np.zeros((len(num_samples_list), len(iterations_list)))
     area_std_array = np.zeros((len(num_samples_list), len(iterations_list)))
 
     for i, num_samples in enumerate(num_samples_list):
         for j, num_iterations in enumerate(iterations_list):
+            
             area_temp = np.zeros((num_samples))
             for k in range(num_samples):
-                c_shape = (1, sample_size)
-                left_bound, right_bound = -2, 1
-                bottom_bound, top_bound = -1, 1
-                c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
+                c_arr = complex_random_array(sample_size)
                 mand_set = generate_mandelbrot(0, c_arr, num_iterations, 1, 2, sequence=False, heights=False)
-                area_temp[k] = calculate_area(left_bound, right_bound, bottom_bound, top_bound, len(mand_set), len(c_arr))
+                area_temp[k] = calculate_area(len(mand_set), len(c_arr))
+
             area_mean = np.mean(area_temp)
             area_std = np.std(area_temp)
             area_array[i][j] = area_mean
             area_std_array[i][j] = area_std
+
     return area_array, area_std_array
     
 
@@ -133,7 +150,7 @@ def plot_mandelbrot(num_points, iterations):
     bottom_bound, top_bound = -1, 1
     c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
 
-    mand_set, colormap_complex = generate_mandelbrot(0, c_arr, iterations, 10, 2, sequence=False, heights=True)
+    mand_set, colormap_complex = generate_mandelbrot(0, c_arr, iterations, 2, sequence=False, heights=True)
 
     x = [elem.real for elem in mand_set]
     y = [elem.imag for elem in mand_set]
@@ -157,25 +174,20 @@ def plot_mandelbrot(num_points, iterations):
     plt.savefig(f'mandelbrot_N=10^({int(np.log10(num_points))}).png', dpi=200)
     plt.show()
 
-def intermediate_iterations_test():
+def intermediate_iterations_test(sample_size, iterations, intermediate_steps, repetitions, plots=False):
     """
     Doesn't work for different iterations and intermediate_steps values, but for some
     seems to be correct
     """
-
-    sample_size = int(1E4)
     c_arr = complex_random_array(length = sample_size)
-
-    iterations = 100
-    intermediate_steps = 10
-    repetitions = 10
 
     mand_sets_array = []
     for i in range(repetitions):
-        temp = generate_mandelbrot(0, c_arr, iterations, intermediate_steps, 2, True, False)
+        temp = generate_mandelbrot(0, c_arr, iterations, 2, num_intermediate_steps=intermediate_steps, sequence=True)
         mand_sets_array.append(temp)
     
-
+    # calculate average number of points in Mandelbrot set
+    # for each specified number of iterations
     lengths = [[] for i in range(len(mand_sets_array))]
     for i, mand_sets in enumerate(mand_sets_array):
         for x in mand_sets:
@@ -189,6 +201,8 @@ def intermediate_iterations_test():
 
     average_lengths = [avg / repetitions for avg in averages]
 
+    # calculate average estimation of area of Mandelbrot set
+    # for each specified number of iterations
     areas = [[] for i in range(len(mand_sets_array))]
     for i, mand_sets in enumerate(mand_sets_array):
         for x in mand_sets:
@@ -202,70 +216,84 @@ def intermediate_iterations_test():
 
     average_areas = [avg / repetitions for avg in average_temp]
 
+    if plots:
+        x = [i * intermediate_steps for i in range(iterations // intermediate_steps)]
+        plt.plot(x[1:], average_lengths[1:])
+        plt.title(f'repetitions = {repetitions}')
+        plt.xlabel('iteration')
+        plt.ylabel('# of points beloning to Mandelbrot set')
 
-    #x = [i * intermediate_steps for i in range(iterations // intermediate_steps)]
-    plt.plot(average_lengths[1:])
-    plt.title(f'repetitions = {repetitions}')
-    plt.xlabel('iteration / 10')
-    plt.ylabel('# of points in generated set')
+        plt.figure()
+        plt.plot(x[1:], average_areas[1:])
+        plt.title(f'repetitions = {repetitions}')
+        plt.xlabel('iteration')
+        plt.ylabel('estimated mean area')
 
-    plt.figure()
-    plt.plot(average_areas[1:])
-    plt.title(f'repetitions = {repetitions}')
-    plt.xlabel('iteration / 10')
-    plt.ylabel('# of points in generated set')
-    plt.show()
+        plt.figure()
+        plt.ylabel('|dA|')
+        plt.plot(abs(np.diff(average_areas))[1:])
 
-    # areas = [calculate_area(-2, 1, -1, 1, len(x), sample_size) for x in result]
+        plt.show()
+    
+    return average_areas, average_lengths
 
-    # plt.figure()
-    # plt.xlabel('iteration / 10')
-    # plt.ylabel('area')
-    # plt.plot(areas[1:])
+def calculate_error_over_iterations(best_estimation, sample_size, iterations, iteration_step, num_runs):
+    average_areas, _ = intermediate_iterations_test(sample_size, iterations, iteration_step, num_runs)
+    errors = [x - best_estimation for x in average_areas]
 
-    # plt.figure()
-    # plt.xlabel('iteration / 10')
-    # plt.ylabel('|dA|')
-    # plt.plot(abs(np.diff(areas)))
+    return errors
 
-    # plt.show()
-
-
-def area_vs_sample_size(sample_sizes, repititions, iterations, iteration_step):
+def area_vs_sample_size(sample_sizes, repititions, iterations, iteration_step, method):
     area_list = []
     area_std_list = []
     for sample_size in sample_sizes:
         area_array = np.zeros(repititions)
         for i in range(repititions):
-            c_shape = (1, int(sample_size))
-            left_bound, right_bound = -2, 1
-            bottom_bound, top_bound = -1, 1
-            c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
+            c_arr = complex_random_array(sample_size, method=method)
 
             mand_set = generate_mandelbrot(0, c_arr, iterations, iteration_step, 2, sequence=False, heights=False)
-            area = calculate_area(left_bound, right_bound, bottom_bound, top_bound, len(mand_set), len(c_arr))
+            area = calculate_area(len(mand_set), len(c_arr))
             area_array[i] = area
 
         area_list.append(np.mean(area_array))
         area_std_list.append(np.std(area_array))
-    
-    plt.plot(sample_sizes, area_list, 'ko')
-    plt.plot(sample_sizes, area_list, 'k-')
-    # plt.errorbar(sample_sizes, area_list, yerr = area_std_list)
-    plt.fill_between(sample_sizes, np.array(area_list) - np.array(area_std_list), np.array(area_list) + np.array(area_std_list), color='k', alpha=0.2)
-    
 
+    return area_list, area_std_list
+
+def plot_area_vs_sample_size(sample_sizes, repititions, iterations, iteration_step, methods):
+
+    areas_with_methods = []
+    areas_std_with_methods = []
+    for method in methods:
+        temp_area, temp_std = area_vs_sample_size(sample_sizes, repititions, iterations, iteration_step, method)
+        areas_with_methods.append(temp_area)
+        areas_std_with_methods.append(temp_std)
+
+    colors = [('ko', 'k-', 'k'), ('bo', 'b-', 'b'), ('ro', 'r-', 'r'), (('go', 'g-', 'g'))]
+    for i in range(len(areas_with_methods)):
+        plt.plot(sample_sizes, areas_with_methods[i], colors[i][0])
+        plt.plot(sample_sizes, areas_with_methods[i], colors[i][1])
+        # plt.errorbar(sample_sizes, area_list, yerr = area_std_list)
+        plt.fill_between(sample_sizes, np.array(areas_with_methods[i]) - np.array(areas_std_with_methods[i]),
+                          np.array(areas_with_methods[i]) + np.array(areas_std_with_methods[i]), color=colors[i][2], alpha=0.15)
 
     plt.xlabel('S')
     plt.ylabel('A')
     plt.show()
 
 def main():
-    # intermediate_iterations_test()
+
+    sample_sizes = np.linspace(int(1E2), int(1E3), num=10).astype(int)
+    plot_area_vs_sample_size(sample_sizes, 10, 100, 2, methods=['uniform', 'lhs'])
+
+
+    #print(calculate_error_over_iterations(best_estimation=1.527021, sample_size=int(1E4), iterations=100, iteration_step=10, num_runs=10))
+
+
     # num_samples_list = [i for i in range(10, 101, 20)]
     # iterations_list = [i for i in range(10, 101, 20)]
 
-    # area_array, area_std_array = iterations_vs_no_samples(int(1E4), num_samples_list, iterations_list)
+    # area_array, area_std_array = iterations_vs_num_runs(int(1E4), num_samples_list, iterations_list)
 
     # # Calculate step sizes
     # sample_step = num_samples_list[1] - num_samples_list[0]
@@ -289,9 +317,10 @@ def main():
     # plt.title(r'$\sigma(A)$')
     # plt.show()
 
-    # plot_mandelbrot(int(1E6), 500)
-    sample_sizes = np.linspace(int(1E3), int(1E5), num=10)
-    area_vs_sample_size(sample_sizes, 30, 100, 2)
+    
+    
+    #sample_sizes = np.linspace(int(1E3), int(1E5), num=10)
+    #area_vs_sample_size(sample_sizes, 30, 100, 2)
 
 
 
