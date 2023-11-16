@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyDOE2 import lhs
 import scipy.stats as stats
+from ortho_sampling import init_genrand, random_orthogonal_sampling
 
 def mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence=False):
     k = 0
@@ -62,11 +63,9 @@ def calculate_area(mand_set_length, sample_length, left_bound = -2, right_bound 
     return mand_set_length / sample_length * S_rect
 
 def complex_random_array(length, method = 'uniform', left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
-
     if method == 'uniform':
         c_shape = (1, length)
         c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
-
         return c_arr
     
     elif method == 'lhs':
@@ -74,14 +73,16 @@ def complex_random_array(length, method = 'uniform', left_bound = -2, right_boun
         lhs_sample = lhs(2, length)
 
         dimension_ranges = [(left_bound, right_bound), (bottom_bound, top_bound)] 
-        
         scaled_lhs_samples = np.zeros((length, 2))
         for i in range(2):
             scaled_lhs_samples[:, i] = dimension_ranges[i][0] + lhs_sample[:, i] * (dimension_ranges[i][1] - dimension_ranges[i][0])
 
         c_arr = np.vectorize(complex)(scaled_lhs_samples[:, 0], scaled_lhs_samples[:, 1])
-
         return c_arr
+    
+    elif method == 'orthogonal' or method == 'ortho':
+        ortho_sample = random_orthogonal_sampling(int(np.sqrt(length)), 1)
+        return ortho_sample
 
 def estimate_confidence_interval(data, confidence_level):
     sample_mean = np.mean(data)
