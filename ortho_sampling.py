@@ -39,7 +39,7 @@ def random_orthogonal_sampling(MAJOR, RUNS, x_range=(-2, 1), y_range=(-1, 1)):
 
                 output.append(complex(x, y))
     
-    return output
+    return np.array(output)
 
 # Initializing random number generator
 #init_genrand(3737)
