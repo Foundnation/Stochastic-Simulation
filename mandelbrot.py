@@ -14,7 +14,7 @@ def mandelbrot_func(z0, c, iterations, num_intermediate_steps, sequence=False):
     z_bins = []
     if sequence:
         z_bins_length = len(z) // num_intermediate_steps
-        for i in range(num_intermediate_steps):
+        for i in range(z_bins_length):
             z_bins.append(z[i * z_bins_length] - 1)
         return z_bins
     else:
@@ -45,7 +45,7 @@ def generate_mandelbrot(z0, c_array, iterations, z_threshold, num_intermediate_s
 
     elif sequence == True and heights == False:
         mandelbrot_set_array = []
-        len_f_array = num_intermediate_steps
+        len_f_array = iterations // num_intermediate_steps
         for i in range(len_f_array):
             mandelbrot_set_array.append([])
 
@@ -222,6 +222,7 @@ def intermediate_iterations(sample_size, iterations, intermediate_steps, repetit
     # calculate average number of points in Mandelbrot set
     # for each specified number of iterations
     lengths = [[] for i in range(len(mand_sets_array))]
+
     for i, mand_sets in enumerate(mand_sets_array):
         for x in mand_sets:
             lengths[i].append(len(x))
@@ -233,6 +234,7 @@ def intermediate_iterations(sample_size, iterations, intermediate_steps, repetit
             averages[idx] += val
 
     average_lengths = [avg / repetitions for avg in averages]
+    average_lengths = [length + num_points_inside_circle for length in average_lengths]
 
     # calculate average estimation of area of Mandelbrot set
     # for each specified number of iterations
@@ -291,13 +293,14 @@ def plot_area_vs_sample_size(sample_sizes, repetitions, iterations, iteration_st
     colors = [('ko', 'k-', 'k'), ('bo', 'b-', 'b'), ('ro', 'r-', 'r'), (('go', 'g-', 'g'))]
     for i in range(len(areas_with_methods)):
         plt.plot(sample_sizes, areas_with_methods[i], colors[i][0])
-        plt.plot(sample_sizes, areas_with_methods[i], colors[i][1])
+        plt.plot(sample_sizes, areas_with_methods[i], colors[i][1], label=methods[i])
         # plt.errorbar(sample_sizes, area_list, yerr = area_std_list)
         plt.fill_between(sample_sizes, np.array(areas_with_methods[i]) - np.array(areas_std_with_methods[i]),
                           np.array(areas_with_methods[i]) + np.array(areas_std_with_methods[i]), color=colors[i][2], alpha=0.15)
 
     plt.xlabel('S')
     plt.ylabel('A')
+    plt.legend()
     plt.show()
 
     return areas_with_methods, areas_std_with_methods
@@ -354,14 +357,54 @@ def plot_runs_iterations_interaction():
     plt.title(r'$\sigma(A)$')
     plt.show()
 
+def plot_pairwise_ttest(data, methods, input_type='mean areas'):
+    num_methods = len(data)
+    p_values_matrix = np.empty((num_methods, num_methods), dtype=object)
+
+    # pairwise t-tests for each position
+    for i in range(num_methods):
+        for j in range(num_methods):
+            _, p_value = stats.ttest_ind(data[i], data[j])
+            p_values_matrix[i, j] = round(p_value, 4)  
+    plt.figure(figsize=(8, 6))
+    plt.imshow(np.array(p_values_matrix, dtype=float), cmap='coolwarm', interpolation='nearest')
+
+    # add significant markers
+    for i in range(num_methods):
+        for j in range(num_methods):
+            if p_values_matrix[i, j] < 0.05:  
+                plt.text(j, i, f"{p_values_matrix[i, j]}*", ha='center', va='center', color='black')
+            else:
+                plt.text(j, i, str(p_values_matrix[i, j]), ha='center', va='center', color='black')
+
+    plt.colorbar(label='p-value')
+    plt.title('Pairwise t-test p-values for mean area')
+    plt.xticks(np.arange(len(methods)), methods)
+    plt.yticks(np.arange(len(methods)), methods)
+    plt.xlabel('Methods')
+    plt.ylabel('Methods')
+    plt.grid(False)
+    plt.show()
+
 
 
 def main():
 
-    res1 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='cutout')
-    res2 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='uniform')
+    num_points = int(1E3)
+    # only works properly when iterations is divisible by intermediate_steps
+    iterations = 100
+    intermediate_steps = 10 
+    repetitions = 5
 
-    print(res1, '\n', res2)
+    average_areas_uniform, average_lengths_uniform = intermediate_iterations(sample_size=num_points, iterations=iterations, 
+                                                                intermediate_steps=intermediate_steps, repetitions=repetitions)
+
+    plt.plot(average_areas_uniform)
+    plt.show()
+    # res1 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='cutout')
+    # res2 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='uniform')
+
+    # print(res1, '\n', res2)
 
     # cutout_sample = complex_random_array(100000, method='cutout')
     # print(cutout_sample)
