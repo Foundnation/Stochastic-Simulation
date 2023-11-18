@@ -386,6 +386,39 @@ def plot_pairwise_ttest(data, methods, input_type='mean areas'):
     plt.grid(False)
     plt.show()
 
+def plot_pairwise_wilcoxon_test(data, methods, input_type='mean areas'):
+    num_methods = len(data)
+    p_values_matrix = np.empty((num_methods, num_methods), dtype=object)
+
+    # Pairwise Wilcoxon signed-rank tests for each pair of methods
+    for i in range(num_methods):
+        for j in range(num_methods):
+            if i != j:
+                _, p_value = stats.wilcoxon(data[i], data[j])
+                p_values_matrix[i, j] = round(p_value, 4)
+            else:
+                p_values_matrix[i, j] = 1.0  # Setting the diagonal to 1.0 (no comparison with itself)
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(np.array(p_values_matrix, dtype=float), cmap='coolwarm', interpolation='nearest')
+
+    # Add significant markers
+    for i in range(num_methods):
+        for j in range(num_methods):
+            if p_values_matrix[i, j] < 0.05 and i != j:  
+                plt.text(j, i, f"{p_values_matrix[i, j]}*", ha='center', va='center', color='black')
+            else:
+                plt.text(j, i, str(p_values_matrix[i, j]), ha='center', va='center', color='black')
+
+    plt.colorbar(label='p-value')
+    plt.title(f'Pairwise Wilcoxon signed-rank test p-values for {input_type}')
+    plt.xticks(np.arange(len(methods)), methods)
+    plt.yticks(np.arange(len(methods)), methods)
+    plt.xlabel('Methods')
+    plt.ylabel('Methods')
+    plt.grid(False)
+    plt.show()
+
 
 
 def main():
