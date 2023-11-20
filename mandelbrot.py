@@ -96,13 +96,13 @@ def cutout_sampling(length, left_bound=-2, right_bound=1, bottom_bound=-1, top_b
 
 
 
-def complex_random_array(length, method = 'uniform', left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
-    if method == 'uniform':
+def complex_random_array(length, method = 'Uniform', left_bound = -2, right_bound = 1, bottom_bound = -1, top_bound = 1):
+    if method == 'Uniform':
         c_shape = (1, length)
         c_arr = (np.random.uniform(left_bound, right_bound, c_shape) + 1.j * np.random.uniform(bottom_bound, top_bound, c_shape))[0]
         return c_arr
     
-    elif method == 'lhs':
+    elif method == 'LHS':
         # generate a Latin Hypercube Sample of real numbers in the interval [0, 1)
         lhs_sample = lhs(2, length)
 
@@ -114,11 +114,11 @@ def complex_random_array(length, method = 'uniform', left_bound = -2, right_boun
         c_arr = np.vectorize(complex)(scaled_lhs_samples[:, 0], scaled_lhs_samples[:, 1])
         return c_arr
     
-    elif method == 'orthogonal' or method == 'ortho':
+    elif method == 'Orthogonal' or method == 'ortho':
         ortho_sample = random_orthogonal_sampling(int(np.sqrt(length)), 1)
         return ortho_sample
     
-    elif method == 'custom' or method == 'reduced_domain' or method == 'cutout':
+    elif method == 'custom' or method == 'reduced_domain' or method == 'Cutout':
         custom_sample, num_points_inside_circle = cutout_sampling(length)
         return custom_sample, num_points_inside_circle
 
@@ -141,9 +141,9 @@ def estimate_confidence_interval(data, confidence_level):
 
     return [lower_bound, upper_bound]
     
-def estimate_area(sample_size, num_runs, iterations, iteration_step, method='uniform', output_area_array = False):
+def estimate_area(sample_size, num_runs, iterations, iteration_step, method='Uniform', output_area_array = False):
     area_array = np.zeros(num_runs)
-    if method == 'cutout' or method == 'custom' or method == 'reduced_domain':
+    if method == 'Cutout' or method == 'custom' or method == 'reduced_domain':
         for i in range(num_runs):
             c_arr, num_points_inside_circle = complex_random_array(sample_size, method=method)
 
@@ -209,7 +209,7 @@ def intermediate_iterations(sample_size, iterations, intermediate_steps, repetit
     """
     num_points_inside_circle = 0
 
-    if method == 'cutout':
+    if method == 'Cutout':
         c_arr, num_points_inside_circle = complex_random_array(length = sample_size, method=method)
     else:
         c_arr = complex_random_array(length = sample_size, method=method)
@@ -265,7 +265,7 @@ def area_vs_sample_size(sample_sizes, repititions, iterations, iteration_step, m
     for sample_size in sample_sizes:
         area_array = np.zeros(repititions)
         for i in range(repititions):
-            if method == 'cutout':
+            if method == 'Cutout':
                 c_arr, num_points_inside_circle = complex_random_array(sample_size, method=method)
                 mand_set = generate_mandelbrot(0, c_arr, iterations, iteration_step, 2, sequence=False, heights=False)
                 area = calculate_area(len(mand_set), len(c_arr), circle_sample_length=num_points_inside_circle)
@@ -434,8 +434,8 @@ def main():
 
     plt.plot(average_areas_uniform)
     plt.show()
-    # res1 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='cutout')
-    # res2 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='uniform')
+    # res1 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='Cutout')
+    # res2 = estimate_area(sample_size=int(1E4), num_runs=10, iterations=100, iteration_step=10, method='Uniform')
 
     # print(res1, '\n', res2)
 
@@ -447,7 +447,7 @@ def main():
     # plot_runs_iterations_interaction()
 
     #sample_sizes = np.linspace(int(1E2), int(1E3), num=10).astype(int)
-    #plot_area_vs_sample_size(sample_sizes, 10, 100, 2, methods=['uniform', 'lhs'])
+    #plot_area_vs_sample_size(sample_sizes, 10, 100, 2, methods=['uniform', 'LHS'])
 
 
     #print(calculate_error_over_iterations(best_estimation=1.527021, sample_size=int(1E4), iterations=100, iteration_step=10, num_runs=10))
