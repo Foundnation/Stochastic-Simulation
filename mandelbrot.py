@@ -202,7 +202,7 @@ def plot_mandelbrot(num_points, iterations):
     plt.savefig(f'mandelbrot_N=10^({int(np.log10(num_points))}).png', dpi=200)
     plt.show()
 
-def intermediate_iterations(sample_size, iterations, intermediate_steps, repetitions, method = 'uniform'):
+def intermediate_iterations(sample_size, iterations, intermediate_steps, repetitions, method = 'Uniform'):
     """
     Doesn't work for different iterations and intermediate_steps values, but for some
     seems to be correct
@@ -292,7 +292,7 @@ def plot_area_vs_sample_size(sample_sizes, repetitions, iterations, iteration_st
 
     colors = [('ko', 'k-', 'k'), ('bo', 'b-', 'b'), ('ro', 'r-', 'r'), (('go', 'g-', 'g'))]
     for i in range(len(areas_with_methods)):
-        plt.plot(sample_sizes, areas_with_methods[i], colors[i][0])
+        plt.plot(sample_sizes, areas_with_methods[i], colors[i][0], markersize=2)
         plt.plot(sample_sizes, areas_with_methods[i], colors[i][1], label=methods[i])
         # plt.errorbar(sample_sizes, area_list, yerr = area_std_list)
         plt.fill_between(sample_sizes, np.array(areas_with_methods[i]) - np.array(areas_std_with_methods[i]),
