@@ -172,7 +172,7 @@ def estimate_area(sample_size, num_runs, iterations, iteration_step, method='Uni
 
 """ *** Test Section *** """
 
-def plot_mandelbrot(num_points, iterations):
+def plot_mandelbrot(num_points, iterations, save=False):
     c_shape = (1, num_points)
     left_bound, right_bound = -2, 1
     bottom_bound, top_bound = -1, 1
@@ -199,7 +199,8 @@ def plot_mandelbrot(num_points, iterations):
     plt.scatter(x, y, c=colors, s=0.1)
     plt.xlabel(r'$Re[c]$')
     plt.ylabel(r'$Im[c]$')
-    plt.savefig(f'mandelbrot_N=10^({int(np.log10(num_points))}).png', dpi=200)
+    if save:
+        plt.savefig(f'mandelbrot_i={iterations}).png', dpi=300)
     plt.show()
 
 def intermediate_iterations(sample_size, iterations, intermediate_steps, repetitions, method = 'Uniform'):
