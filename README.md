@@ -28,14 +28,47 @@ To utilize the code in this repository, follow these steps:
 
 3. Run the `mandelbrot_notebook.py` file or explore the code within individual files to understand the implementations and results obtained.
 
+# Queueing Theory
+
+This repository contains notebooks and resources related to Queueing Theory. Queueing Theory involves the study of queues or waiting lines and explores how entities move through these queues, their behaviors, and the overall system's performance.
+
+## Notebooks
+
+### 1. simulations_and_analysis_part1.ipynb
+
+This notebook covers practical simulations and analyses related to Queueing Theory. It dives into fundamental concepts, simulates various queueing models, and performs analytical analyses of these models. 
+
+#### Key topics covered:
+- Simulation of different queueing models (M/M/1, M/M/n, etc.)
+- Performance metrics and analysis (waiting times)
+
+### 2. simulations_and_analysis_part2.ipynb
+
+This notebook extends the exploration of Queueing Theory by delving deeper into advanced simulations and analyses. It builds upon the concepts introduced in part 1 and explores more complex scenarios, possibly involving multiple queues, different arrival patterns, or service strategies.
+
+#### Key topics covered:
+- Parameter analysis for number of simulations
+- Analysis of models with SJF scheduling
+- Comparative study of queueing models for FIFO and SJF scheduling
+
+### 3. theory.ipynb
+
+This notebook provides the theoretical expected waiting time and delay probabilitiy and some visualizations.
+
+
+
 ## Dependencies
 
 This project is built using Python and may require additional dependencies. The primary libraries used include:
 
 - `numpy`
 - `matplotlib`
+- `simpy`
 
 Use requirements.txt to find other dependecies
+
+
+
 
 ## License
 
