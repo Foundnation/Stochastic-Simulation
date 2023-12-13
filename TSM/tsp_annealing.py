@@ -1,7 +1,7 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-
+import scipy.stats as stats
 
 def calculate_distances(cities):
     """
@@ -13,8 +13,8 @@ def calculate_distances(cities):
         for j in range(i + 1, num_cities):
             distance = np.sqrt((cities[i][0] - cities[j][0]) * (cities[i][0] - cities[j][0]) +
                                   (cities[i][1] - cities[j][1]) * (cities[i][1] - cities[j][1]))
-            distances[i][j] = distance
-            distances[j][i] = distance
+            
+            distances[i][j] = distances[j][i] = distance
 
     return distances
 
@@ -42,7 +42,7 @@ def load_graph(filename):
 
 def swap(current_state):
     """
-    takes a tour city sequence (list) swap two random cities
+    takes a tour city sequence (list) and swaps two randomly chosen cities
     """
     new_state = current_state.copy()
     index1 = random.randint(0, len(current_state) - 1)
@@ -68,12 +68,16 @@ def cool(current_temp, alpha, method = 'exponential'):
 
     return new_temp
 
-def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, final_temp=1E-5, alpha=0.999, max_iterations=int(1E7), init_tour = None):
+
+def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, alpha=0.999, max_iterations=int(1E4), init_tour = None, final_temp = 1E-6):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
     init_tour       -  initial order of visiting cities   
     """
+
+    count = 0
+
     num_cities = len(distances)
     if init_tour == None:
         current_tour = np.arange(num_cities)
@@ -89,11 +93,15 @@ def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, f
     best_energy = current_energy 
 
     temperature = initial_temp
-    fitness_over_iterations = []
+    cost_over_iterations = []
+    temperature_over_iterations = []
 
     for _ in range(max_iterations):
-        if temperature < final_temp:
-            break
+        count += 1
+        # if temperature < final_temp:
+        #     print('temperature reached')
+        #     print(count)
+        #     break
 
         new_tour = generate_neighbor(current_tour)
 
@@ -104,14 +112,23 @@ def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, f
             current_tour = new_tour
             current_energy = new_energy
 
-            if current_energy < best_energy:
-                best_tour = current_tour.copy()
-                best_energy = current_energy
+            best_tour = current_tour
+            best_energy = current_energy
+            
+            # # a possible improvement
+            # if current_energy < best_energy:
+            #     best_tour = current_tour.copy()
+            #     best_energy = current_energy
 
         temperature = cool(temperature, alpha)
-        fitness_over_iterations.append(best_energy)
+        temperature_over_iterations.append(temperature)
+        cost_over_iterations.append(best_energy)
 
-    return best_tour, best_energy, fitness_over_iterations
+    return best_tour, best_energy, cost_over_iterations, temperature_over_iterations
+
+def estimate_conf_interval(data, conf_level=0.95):
+    return stats.t.interval(conf_level, len(data) - 1, loc=stats.describe(data).mean, scale=stats.sem(data))
+
 
 def plot_tour(tour, cities):
     """
@@ -127,6 +144,48 @@ def plot_tour(tour, cities):
     plt.xlabel("X")
     plt.ylabel("Y")
 
+
+def run_simulations(num_runs, distances, output = 'full', **kwargs):
+    """
+    calls perform_annealing for num_runs times and outputs chosen data
+    **kwargs are optional additional parameters that will be passed to perform_annealing
+
+    """
+    tours = []
+    fitness_lists = []
+    temperatures = []
+    final_fitnesses = []
+    for i in range(num_runs):
+        best_tour, _, fitness, temper = perform_annealing(distances=distances, **kwargs)
+        tours.append(best_tour)
+        fitness_lists.append(fitness)
+        temperatures.append(temper)
+        final_fitnesses.append(fitness[-1])
+    
+    if output == 'full':    
+        return tours, fitness_lists, temperatures
+    elif output == 'final_fitnesses':
+        return final_fitnesses
+    elif output == 'fitness_statistics':
+        return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
+
+def run_vary_maxiter(num_runs, distances, max_iterations_list, **kwargs):
+    """
+    performs annealing for several values of max_iterations_list
+
+    return: mean, std and confidence interval corresponding to each value in max_iterations_list
+    """
+    means, stds, conf_intervals = [], [], []
+    for max_i in max_iterations_list:
+        mean, std, conf_interval = run_simulations(num_runs=num_runs, distances=distances,
+                                                    max_iterations = max_i, output='fitness_statistics', **kwargs)
+        means.append(mean)
+        stds.append(std)
+        conf_intervals.append(conf_interval)
+
+    return means, stds, conf_intervals
+
+
 def main():
     """ testing """
     import os
@@ -134,10 +193,12 @@ def main():
     filepath = os.path.join(script_directory, 'TSP-Configurations/eil51.tsp.txt')
 
     cities = load_graph(filepath)
-    print(cities)
-    print(calculate_distances(cities))
-
-
+    distances = calculate_distances(cities)
+    # _ , _, _, _  = perform_annealing(distances=distances, final_temp = 1)
+    #result = run_simulations(num_runs = 50, distances=distances, output='fitness_statistics')
+    
+    results = run_vary_maxiter(20, distances, [100, 1000, 10000])
+    print(results)
 
 if __name__ == '__main__':
     main()
