@@ -51,6 +51,23 @@ def swap(current_state):
     
     return new_state
 
+def reverse(current_state):
+    """
+    generates two random indices and reverses the order of all the cities in between
+    """
+    new_state = current_state.copy()
+    index1 = random.randint(0, len(current_state) - 1)
+    index2 = random.randint(0, len(current_state) - 1)
+
+    while index2 == index1:
+        index2 = random.randint(0, len(current_state) - 1)
+
+    index1, index2 = min(index1, index2), max(index1, index2)
+
+    new_state[index1:index2+1] = reversed(new_state[index1:index2+1])
+
+    return new_state
+
 def generate_neighbor(current_state, method = 'swap'):
     if method == 'swap':
         new_state = swap(current_state)
