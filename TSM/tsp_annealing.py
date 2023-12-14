@@ -67,8 +67,30 @@ def reverse(current_state):
 
     new_state[index1:index2+1] = list(reversed(new_state[index1:index2+1]))
 
-    # new_state[index1:index2+1] = reversed(new_state[index1:index2+1])
-    # new_state = current_state[:index1] + current_state[index1:index2][::-1] + current_state[index2:]
+    return new_state
+
+def insert(current_state):
+    """
+    inserts a single random node in another random place and removes it from where it was originally
+    """
+    new_state = current_state.copy()
+    if isinstance(current_state, np.ndarray):
+        new_state = new_state.tolist()
+
+    index1 = random.randint(0, len(current_state) - 1)
+    index2 = random.randint(0, len(current_state) - 1)
+
+    while index2 == index1:
+        index2 = random.randint(0, len(current_state) - 1)
+
+    value_to_insert = new_state[index2]
+    new_state.insert(index1, value_to_insert)
+
+    # Remove the value at index2 from its original position
+    if index2 < index1:
+        del new_state[index2]
+    else:
+        del new_state[index2 + 1]
 
     return new_state
 
@@ -77,6 +99,8 @@ def generate_neighbor(current_state, method):
         new_state = swap(current_state)
     if method == 'reverse':
         new_state = reverse(current_state)
+    if method == 'insert':
+        new_state = insert(current_state)
     
     return new_state
 
