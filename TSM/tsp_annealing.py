@@ -71,6 +71,8 @@ def reverse(current_state):
 def generate_neighbor(current_state, method = 'swap'):
     if method == 'swap':
         new_state = swap(current_state)
+    if method == 'reverse':
+        new_state = reverse(current_state)
     
     return new_state
 
@@ -85,6 +87,25 @@ def cool(current_temp, alpha, method = 'exponential'):
 
     return new_temp
 
+def two_opt(current_state, distances):
+    """
+    Apply the 2-opt algorithm to improve the tour.
+    """
+    improved = True
+    while improved:
+        improved = False
+        for i in range(len(current_state) - 1):
+            for j in range(i + 1, len(current_state)):
+                if j - i == 1:
+                    continue  # Skip adjacent cities
+                new_tour = current_state[:i] + current_state[i:j][::-1] + current_state[j:]
+                if total_tour_distance(new_tour, distances) < total_tour_distance(current_state, distances):
+                    current_state = new_tour
+                    improved = True
+                    break  # Start over if improvement is found
+            if improved:
+                break  # Start over if improvement is found
+    return current_state
 
 def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, alpha=0.999, max_iterations=int(1E4), init_tour = None, final_temp = 1E-6):
     """
