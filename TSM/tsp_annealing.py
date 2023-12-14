@@ -171,7 +171,7 @@ def estimate_conf_interval(data, conf_level=0.95):
     return stats.t.interval(conf_level, len(data) - 1, loc=stats.describe(data).mean, scale=stats.sem(data))
 
 
-def plot_tour(tour, cities):
+def plot_tour(tour, cities, permutation_method='swap'):
     """
     requires calling plt.show() after
     """
@@ -181,7 +181,7 @@ def plot_tour(tour, cities):
     plt.figure(figsize=(8, 6))
     plt.scatter([city[0] for city in cities], [city[1] for city in cities])
     plt.plot(tour_x + [tour_x[0]], tour_y + [tour_y[0]], 'o-')
-    plt.title("TSP Solution")
+    plt.title("TSP Solution for %s"%(permutation_method))
     plt.xlabel("X")
     plt.ylabel("Y")
 
