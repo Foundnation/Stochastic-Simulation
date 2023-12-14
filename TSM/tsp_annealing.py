@@ -29,6 +29,46 @@ def total_tour_distance(tour, distances):
 
     return total
 
+def load_graph(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+
+    cities = []
+    for line in lines[6:]:
+        data = line.split()
+        if len(data) == 3:
+            cities.append(tuple(map(float, data[1:])))
+
+    return cities
+
+def swap(current_state):
+    """
+    takes a tour city sequence (list) and swaps two randomly chosen cities
+    """
+    new_state = current_state.copy()
+    index1 = random.randint(0, len(current_state) - 1)
+    index2 = random.randint(0, len(current_state) - 1)
+    new_state[index1], new_state[index2] = new_state[index2], new_state[index1]
+    
+    return new_state
+
+def reverse(current_state):
+    """
+    generates two random indices and reverses the order of all the cities in between
+    """
+    new_state = current_state.copy()
+    index1 = random.randint(0, len(current_state) - 1)
+    index2 = random.randint(0, len(current_state) - 1)
+
+    while index2 == index1:
+        index2 = random.randint(0, len(current_state) - 1)
+
+    index1, index2 = min(index1, index2), max(index1, index2)
+
+    new_state[index1:index2+1] = list(reversed(new_state[index1:index2+1]))
+
+    return new_state
+
 def tour_to_cities(tour, cities):
     rearranged_cities = [cities[i] for i in tour]
     return rearranged_cities
@@ -128,27 +168,7 @@ def insert(current_state):
 
     return new_state
 
-def generate_neighbor(current_state, method):
-    if method == 'swap':
-        new_state = swap(current_state)
-    if method == 'reverse':
-        new_state = reverse(current_state)
-    if method == 'insert':
-        new_state = insert(current_state)
-    
-    return new_state
-
-def cool(current_temp, alpha, method = 'exponential'):
-    """
-    implementation of cooling schedules
-    alpha - cooling rate
-    return: temperature after a cooling step
-    """
-    if method == 'exponential':
-        new_temp = current_temp * alpha    
-
-    return new_temp
-
+#### IS IT NEEDED ?
 def two_opt(current_state, distances):
     """
     Apply the 2-opt algorithm to improve the tour.
@@ -169,7 +189,57 @@ def two_opt(current_state, distances):
                 break  # Start over if improvement is found
     return current_state
 
-def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, alpha=0.999, max_iterations=int(1E4), init_tour = None, final_temp = 1E-6):
+def generate_neighbor(current_state, method):
+    if method == 'swap':
+        new_state = swap(current_state)
+    if method == 'reverse':
+        new_state = reverse(current_state)
+    if method == 'insert':
+        new_state = insert(current_state)
+    
+    return new_state
+
+def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min, dynamic = False):
+    """
+    implementation of cooling schedules
+    alpha - cooling rate
+    current_step - current step in the cycle 
+    return: temperature after a cooling step
+    t_max = initial temperature
+    t_min = final temperature
+    """
+        
+    if method == 'linear_m':
+        # linear multiplicative cooling
+        new_temp = t_max /  (1 + alpha * current_step)
+        
+    if method == 'linear_a':
+        # linear additive cooling
+        new_temp = t_min + (t_max - t_min) * ((max_iter - current_step)/max_iter)
+        
+    if method == 'quadratic_m':
+        # quadratic multiplicative cooling
+        new_temp = t_min / (1 + alpha * current_step**2)
+        
+    if method == 'quadratic_a':
+        # quadratic additive cooling
+        new_temp = t_min + (t_max - t_min) * ((max_iter - current_step)/max_iter)**2
+        
+    if method == 'exponential_m':
+        # exponential multiplicative cooling
+        if dynamic is False:
+            new_temp = current_temp * alpha**current_step
+        else:
+            new_temp = t_max * alpha**current_step
+
+    if method == 'logarithmic_m':
+        # logarithmical multiplicative cooling
+        new_temp = t_max / (1+alpha * np.log(current_step + 1))
+   
+    return new_temp
+
+def perform_annealing(distances, altering_method = 'swap', cooling_schedule = 'exponential_m', dynamic_flag=False,
+                       initial_temp=10000, alpha=0.999, max_iterations=int(1E4), init_tour = None, final_temp = 1E-6):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
@@ -196,12 +266,12 @@ def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, a
     cost_over_iterations = []
     temperature_over_iterations = []
 
-    for _ in range(max_iterations):
+    for k in range(max_iterations):
         count += 1
-        # if temperature < final_temp:
-        #     print('temperature reached')
-        #     print(count)
-        #     break
+        if temperature < final_temp:
+            print('final temperature reached')
+            print(count)
+            break
 
         new_tour = generate_neighbor(current_tour, altering_method)
 
@@ -220,7 +290,8 @@ def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, a
             #     best_tour = current_tour.copy()
             #     best_energy = current_energy
 
-        temperature = cool(temperature, alpha)
+        temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
+                           t_max=initial_temp, t_min=final_temp, dynamic=dynamic_flag)
         temperature_over_iterations.append(temperature)
         cost_over_iterations.append(best_energy)
 
@@ -311,8 +382,8 @@ def main():
     cities = load_graph(filepath)
     distances = calculate_distances(cities)
     # _ , _, _, _  = perform_annealing(distances=distances, final_temp = 1)
-    result = run_simulations(num_runs = 50, distances=distances, output='fitness_statistics', 
-                                        altering_method = 'reverse')
+    result = run_simulations(num_runs = 10, distances=distances, output='fitness_statistics', 
+                                        altering_method = 'reverse', cooling_schedule = 'linear_m')
     print(result)
     #results = run_vary_maxiter(20, distances, [100, 1000, 10000])
     
