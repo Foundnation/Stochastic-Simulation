@@ -64,7 +64,10 @@ def reverse(current_state):
 
     index1, index2 = min(index1, index2), max(index1, index2)
 
-    new_state[index1:index2+1] = reversed(new_state[index1:index2+1])
+    new_state[index1:index2+1] = list(reversed(new_state[index1:index2+1]))
+
+    # new_state[index1:index2+1] = reversed(new_state[index1:index2+1])
+    # new_state = current_state[:index1] + current_state[index1:index2][::-1] + current_state[index2:]
 
     return new_state
 
