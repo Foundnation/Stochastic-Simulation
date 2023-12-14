@@ -68,7 +68,7 @@ def reverse(current_state):
 
     return new_state
 
-def generate_neighbor(current_state, method = 'swap'):
+def generate_neighbor(current_state, method):
     if method == 'swap':
         new_state = swap(current_state)
     if method == 'reverse':
@@ -141,7 +141,7 @@ def perform_annealing(distances, altering_method = 'swap', initial_temp=10000, a
         #     print(count)
         #     break
 
-        new_tour = generate_neighbor(current_tour)
+        new_tour = generate_neighbor(current_tour, altering_method)
 
         new_energy = total_tour_distance(new_tour, distances)
         energy_difference = new_energy - current_energy
