@@ -2,6 +2,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
+import csv
 
 def calculate_distances(cities):
     """
@@ -210,7 +211,19 @@ def run_simulations(num_runs, distances, output = 'full', **kwargs):
     elif output == 'fitness_statistics':
         return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
 
-def run_vary_maxiter(num_runs, distances, max_iterations_list, **kwargs):
+def save_data(*args, file_path, column_names=None, header=None):
+    data = zip(*args)
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        if header is not None:
+            writer.writerow(header)
+        if column_names is not None:
+            writer.writerow(column_names)
+
+        writer.writerows(data)
+
+def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = None, **kwargs):
     """
     performs annealing for several values of max_iterations_list
 
@@ -223,6 +236,10 @@ def run_vary_maxiter(num_runs, distances, max_iterations_list, **kwargs):
         means.append(mean)
         stds.append(std)
         conf_intervals.append(conf_interval)
+
+    if save_file_path is not None:
+        save_data(means, stds, conf_intervals, file_path=save_file_path, 
+                  column_names=['Mean Distance', 'STD', 'CI'])
 
     return means, stds, conf_intervals
 
@@ -239,7 +256,8 @@ def main():
     #result = run_simulations(num_runs = 50, distances=distances, output='fitness_statistics')
     
     results = run_vary_maxiter(20, distances, [100, 1000, 10000])
-    print(results)
+    
+    run_vary_maxiter(10, distances, [100, 1000], save_file_path='output_test.csv')
 
 if __name__ == '__main__':
     main()
