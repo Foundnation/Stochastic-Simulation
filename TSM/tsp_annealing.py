@@ -253,11 +253,12 @@ def main():
     cities = load_graph(filepath)
     distances = calculate_distances(cities)
     # _ , _, _, _  = perform_annealing(distances=distances, final_temp = 1)
-    #result = run_simulations(num_runs = 50, distances=distances, output='fitness_statistics')
+    result = run_simulations(num_runs = 50, distances=distances, output='fitness_statistics', 
+                                        altering_method = 'reverse')
+    print(result)
+    #results = run_vary_maxiter(20, distances, [100, 1000, 10000])
     
-    results = run_vary_maxiter(20, distances, [100, 1000, 10000])
-    
-    run_vary_maxiter(10, distances, [100, 1000], save_file_path='output_test.csv')
+    #run_vary_maxiter(10, distances, [100, 1000], save_file_path='output_test.csv')
 
 if __name__ == '__main__':
     main()
