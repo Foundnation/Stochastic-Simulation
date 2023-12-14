@@ -29,6 +29,40 @@ def total_tour_distance(tour, distances):
 
     return total
 
+def tour_to_cities(tour, cities):
+    rearranged_cities = [cities[i] for i in tour]
+    return rearranged_cities
+
+
+def count_intersections(cities):
+    """
+    Count the number of intersecting paths in the tour
+    note: Cities are the coordinates of the best_tour_list
+    This can be converted by plugging the original  cities and best_tour
+    into the function above: tour_to_cities
+    """
+
+    def ccw(A, B, C):
+        """Check if three points are in a counterclockwise order."""
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+    def intersect(A, B, C, D):
+        """Check if two line segments AB and CD intersect."""
+        return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+    n = len(cities)
+    intersect_count = 0
+
+    for i in range(n - 1):
+        for j in range(i + 2, n - 1):
+            if i != 0 or j != n - 1:
+                # Avoid checking consecutive edges in the tour
+                if intersect(cities[i], cities[i + 1], cities[j], cities[j + 1]):
+                    intersect_count += 1
+
+    return intersect_count
+
+
 def load_graph(filename):
     with open(filename, 'r') as file:
         lines = file.readlines()
