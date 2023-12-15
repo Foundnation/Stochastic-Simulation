@@ -199,7 +199,7 @@ def generate_neighbor(current_state, method):
     
     return new_state
 
-def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min, dynamic = False):
+def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
     """
     implementation of cooling schedules
     alpha - cooling rate
@@ -227,10 +227,10 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min, dyna
         
     if method == 'exponential_m':
         # exponential multiplicative cooling
-        if dynamic is False:
-            new_temp = current_temp * alpha**current_step
-        else:
-            new_temp = t_max * alpha**current_step
+        new_temp = t_max * alpha**current_step
+    
+    if method == 'dynamic_m':
+        new_temp = current_temp * alpha**current_step
 
     if method == 'logarithmic_m':
         # logarithmical multiplicative cooling
@@ -238,8 +238,8 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min, dyna
    
     return new_temp
 
-def perform_annealing(distances, altering_method = 'swap', cooling_schedule = 'exponential_m', dynamic_flag=False,
-                       initial_temp=10000, alpha=0.999, max_iterations=int(1E4), init_tour = None, final_temp = 1E-6):
+def perform_annealing(distances, altering_method = 'swap', cooling_schedule = 'exponential_m',
+                       initial_temp=10000, alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7, init_tour = None):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
@@ -291,7 +291,7 @@ def perform_annealing(distances, altering_method = 'swap', cooling_schedule = 'e
             #     best_energy = current_energy
 
         temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
-                           t_max=initial_temp, t_min=final_temp, dynamic=dynamic_flag)
+                           t_max=initial_temp, t_min=final_temp)
         temperature_over_iterations.append(temperature)
         cost_over_iterations.append(best_energy)
 
