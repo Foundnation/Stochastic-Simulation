@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 import csv
+import multiprocessing
+import os
+import time
 
 def calculate_distances(cities):
     """
@@ -372,22 +375,42 @@ def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = 
 
     return means, stds, conf_intervals
 
+def run_concurrent(func, **kwargs):
+    # obtains number of cores and threads (# of cores * 2)
+    num_processes = multiprocessing.cpu_count() * 2
+    
+    start_time = time.time()
+    with multiprocessing.Pool(processes=num_processes) as pool:
+        # submit tasks to the pool
+        results = [pool.apply_async(func, kwds=kwargs) for _ in range(3)]
+        
+        # wait for all processes to finish and save output
+        output = [res.get() for res in results]
+
+    end_time = time.time()
+    time_taken_concurrency = end_time - start_time
+    print(f"Time taken with concurrency: {time_taken_concurrency} seconds")
+
+    return output
+
 
 def main():
     """ testing """
-    import os
     script_directory = os.path.dirname(os.path.abspath(__file__))
     filepath = os.path.join(script_directory, 'TSP-Configurations/eil51.tsp.txt')
 
     cities = load_graph(filepath)
     distances = calculate_distances(cities)
+
     # _ , _, _, _  = perform_annealing(distances=distances, final_temp = 1)
-    result = run_simulations(num_runs = 10, distances=distances, output='fitness_statistics', 
-                                        altering_method = 'reverse', cooling_schedule = 'linear_m')
-    print(result)
-    #results = run_vary_maxiter(20, distances, [100, 1000, 10000])
+    # result = run_simulations(num_runs = 10, distances=distances, output='fitness_statistics', 
+    #                                     altering_method = 'reverse', cooling_schedule = 'linear_m')
+    # print(result)
+    # results = run_vary_maxiter(20, distances, [100, 1000, 10000])
     
-    #run_vary_maxiter(10, distances, [100, 1000], save_file_path='output_test.csv')
+    # run_vary_maxiter(10, distances, [100, 1000], save_file_path='output_test.csv')
+
+
 
 if __name__ == '__main__':
     main()
