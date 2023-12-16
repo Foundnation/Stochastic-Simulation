@@ -226,7 +226,7 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
         
     if method == 'linear_m':
         # linear multiplicative cooling
-        new_temp = t_max /  (1 + alpha * current_step)
+        new_temp = t_max / (1 + alpha * current_step)
         
     if method == 'linear_a':
         # linear additive cooling
@@ -451,6 +451,24 @@ def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, save_f
 ###-----------------------------------------------------------------------------------------------------------------
 
 ##--------------------------------- TESTING ------------------------------------------------------------------------
+def plot_dist_and_temp_local(costs, temps, title=None):
+    fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+    axs[0].set_title('Distance over iterations')
+    axs[0].plot(costs)
+    axs[1].set_title('Temperature')
+    axs[1].plot(temps)
+    if title is not None:
+        fig.suptitle(title)
+    plt.show()
+
+def wrappe_func(**kwargs):
+    _ , best_energy, costs, temps, count = perform_annealing(**kwargs, output_count=True)
+    schedule = kwargs['cooling_schedule']
+    print('cooling schedule: ', schedule)
+    print('best_energy:', best_energy)
+    print('performed iterations:', count)
+    plot_dist_and_temp_local(costs, temps, f'Cooling schedule: {schedule}')
+
 def main():
     script_directory = os.path.dirname(os.path.abspath(__file__))
     filepath = os.path.join(script_directory, 'TSP-Configurations/eil51.tsp.txt')
@@ -458,11 +476,12 @@ def main():
     cities = load_graph(filepath)
     distances = calculate_distances(cities)
 
-    # _ , best_energy, costs, temps  = perform_annealing(distances=distances, cooling_schedule='linear_m', alpha=0.999, chain_length=10)
+    # _ , best_energy, costs, temps  = perform_annealing(distances=distances, cooling_schedule='linear_m', final_temp=1E-5,
+    #                                                    alpha = 1 - 1E-4, chain_length=10, max_iterations=10000)
     # print(best_energy)
-    # plt.plot(temps)
-    # plt.figure()
-    # plt.plot(costs)
+    # fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+    # axs[0].plot(costs)
+    # axs[1].plot(temps)
     # plt.show()
 
     # result = run_simulations(num_runs = 10, distances=distances, output='fitness_statistics', 
@@ -472,11 +491,28 @@ def main():
     # results = run_vary_maxiter(20, distances, [100, 1000, 10000])
     # print()
     
-    filepath_gendata = os.path.join(script_directory, 'generated_data/output_test.csv')
-    results = run_vary_maxiter_concurrent(10, distances, [100, 1000, 10000], save_file_path=filepath_gendata,
-                                          cooling_schedule = 'linear_m', final_temp=1E-7, alpha=1 - 1E-5)
-    print()
+    # filepath_gendata = os.path.join(script_directory, 'generated_data/output_test.csv')
+    # results = run_vary_maxiter_concurrent(10, distances, [100, 1000, 10000], save_file_path=filepath_gendata,
+    #                                       cooling_schedule = 'linear_m', final_temp=1E-7, alpha=1 - 1E-5)
+    # print()
 
+
+    schedules = ['linear_m', 'exponential_m', 'logarithmic_m', 'linear_a', 'quadratic_a']
+
+    kwargs_list = []
+    for schedule in schedules:
+        kwargs_list.append({   
+                'distances': distances,
+                'altering_method': 'reverse',
+                'max_iterations': 500,
+                'final_temp': 1E-5,
+                'alpha': 1 - 1E-4,
+                'cooling_schedule': schedule,
+            }
+        )
+
+
+    output = run_concurrent(wrappe_func, kwargs_list)
     
 
 
