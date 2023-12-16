@@ -7,6 +7,34 @@ import multiprocessing
 import os
 import time
 
+
+###---------------------------- DATA LOADING AND SAVING ----------------------------------------
+def load_graph(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+
+    cities = []
+    for line in lines[6:]:
+        data = line.split()
+        if len(data) == 3:
+            cities.append(tuple(map(float, data[1:])))
+
+    return cities
+
+def save_data(*args, file_path, column_names=None, header=None):
+    data = zip(*args)
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        if header is not None:
+            writer.writerow(header)
+        if column_names is not None:
+            writer.writerow(column_names)
+
+        writer.writerows(data)
+###-----------------------------------------------------------------------------------------------
+
+###------------------------ DISTANCE CALCULATION -------------------------------------------------
 def calculate_distances(cities):
     """
     returns list of distances between cities (graph weights)
@@ -32,92 +60,36 @@ def total_tour_distance(tour, distances):
 
     return total
 
-def load_graph(filename):
-    with open(filename, 'r') as file:
-        lines = file.readlines()
+def calculate_optimal_distances():
+    script_directory = os.path.dirname(os.path.abspath(__file__))
 
-    cities = []
-    for line in lines[6:]:
-        data = line.split()
-        if len(data) == 3:
-            cities.append(tuple(map(float, data[1:])))
-
-    return cities
-
-def swap(current_state):
-    """
-    takes a tour city sequence (list) and swaps two randomly chosen cities
-    """
-    new_state = current_state.copy()
-    index1 = random.randint(0, len(current_state) - 1)
-    index2 = random.randint(0, len(current_state) - 1)
-    new_state[index1], new_state[index2] = new_state[index2], new_state[index1]
+    local_paths = ['TSP-Configurations/eil51.tsp.txt', 'TSP-Configurations/a280.tsp.txt', 'TSP-Configurations/pcb442.tsp.txt']
+    filepaths = [os.path.join(script_directory, path) for path in local_paths]
     
-    return new_state
+    local_paths_opt = ['TSP-Configurations/eil51.opt.tour.txt', 'TSP-Configurations/a280.opt.tour.txt', 'TSP-Configurations/pcb442.opt.tour.txt']
+    filepaths_opt = [os.path.join(script_directory, path) for path in local_paths_opt]
+    results = []
 
-def reverse(current_state):
-    """
-    generates two random indices and reverses the order of all the cities in between
-    """
-    new_state = current_state.copy()
-    index1 = random.randint(0, len(current_state) - 1)
-    index2 = random.randint(0, len(current_state) - 1)
+    for j in range(len(filepaths_opt)):
+        with open(filepaths_opt[j], 'r') as file:
+            lines = file.readlines()
+        
+        tour = lines[5:(len(lines) - 1)]
 
-    while index2 == index1:
-        index2 = random.randint(0, len(current_state) - 1)
+        for i in range(len(tour) - 1):
+            tour[i] = int(tour[i].split()[0]) - 1
+        tour[-1] = -1
 
-    index1, index2 = min(index1, index2), max(index1, index2)
+        cities = load_graph(filepaths[j])
+        distances = calculate_distances(cities)
+        tour_distance = total_tour_distance(tour, distances)
 
-    new_state[index1:index2+1] = list(reversed(new_state[index1:index2+1]))
+        results.append(tour_distance)
 
-    return new_state
-
-def tour_to_cities(tour, cities):
-    rearranged_cities = [cities[i] for i in tour]
-    return rearranged_cities
-
-
-def count_intersections(cities):
-    """
-    Count the number of intersecting paths in the tour
-    note: Cities are the coordinates of the best_tour_list
-    This can be converted by plugging the original  cities and best_tour
-    into the function above: tour_to_cities
-    """
-
-    def ccw(A, B, C):
-        """Check if three points are in a counterclockwise order."""
-        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
-
-    def intersect(A, B, C, D):
-        """Check if two line segments AB and CD intersect."""
-        return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
-
-    n = len(cities)
-    intersect_count = 0
-
-    for i in range(n - 1):
-        for j in range(i + 2, n - 1):
-            if i != 0 or j != n - 1:
-                # Avoid checking consecutive edges in the tour
-                if intersect(cities[i], cities[i + 1], cities[j], cities[j + 1]):
-                    intersect_count += 1
-
-    return intersect_count
+    return results
 
 
-def load_graph(filename):
-    with open(filename, 'r') as file:
-        lines = file.readlines()
-
-    cities = []
-    for line in lines[6:]:
-        data = line.split()
-        if len(data) == 3:
-            cities.append(tuple(map(float, data[1:])))
-
-    return cities
-
+###------------------------ PERMUTATION OPERATORS ----------------------------------------
 def swap(current_state):
     """
     takes a tour city sequence (list) and swaps two randomly chosen cities
@@ -170,6 +142,41 @@ def insert(current_state):
         del new_state[index2 + 1]
 
     return new_state
+###--------------------------------------------------------------------------------------------------------
+
+###----------------- ADDITIONAL FUNCTIONS -----------------------------------------------------------------
+def tour_to_cities(tour, cities):
+    rearranged_cities = [cities[i] for i in tour]
+    return rearranged_cities
+
+
+def count_intersections(cities):
+    """
+    Count the number of intersecting paths in the tour
+    note: Cities are the coordinates of the best_tour_list
+    This can be converted by plugging the original  cities and best_tour
+    into the function above: tour_to_cities
+    """
+
+    def ccw(A, B, C):
+        """Check if three points are in a counterclockwise order."""
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+    def intersect(A, B, C, D):
+        """Check if two line segments AB and CD intersect."""
+        return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+    n = len(cities)
+    intersect_count = 0
+
+    for i in range(n - 1):
+        for j in range(i + 2, n - 1):
+            if i != 0 or j != n - 1:
+                # Avoid checking consecutive edges in the tour
+                if intersect(cities[i], cities[i + 1], cities[j], cities[j + 1]):
+                    intersect_count += 1
+
+    return intersect_count
 
 #### IS IT NEEDED ?
 def two_opt(current_state, distances):
@@ -191,7 +198,12 @@ def two_opt(current_state, distances):
             if improved:
                 break  # Start over if improvement is found
     return current_state
+    
+def estimate_conf_interval(data, conf_level=0.95):
+    return stats.t.interval(conf_level, len(data) - 1, loc=stats.describe(data).mean, scale=stats.sem(data))
+###-------------------------------------------------------------------------------------------------
 
+###---------------- SIMULATED ANNEALING ------------------------------------------------------------
 def generate_neighbor(current_state, method):
     if method == 'swap':
         new_state = swap(current_state)
@@ -241,14 +253,32 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
    
     return new_temp
 
-def perform_annealing(distances, altering_method = 'swap', cooling_schedule = 'exponential_m',
-                       initial_temp=10000, alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7, init_tour = None):
+# CURRENTLY NOT IMPLEMENTED
+def accept_reject(new_energy, current_energy, new_tour, temperature, current_tour):
+    energy_difference = new_energy - current_energy
+
+    if energy_difference < 0 or random.random() < np.exp(-energy_difference / temperature):
+        current_tour = new_tour
+        current_energy = new_energy
+
+        best_tour = current_tour
+        best_energy = current_energy
+        
+        # # a possible improvement
+        # if current_energy < best_energy:
+        #     best_tour = current_tour.copy()
+        #     best_energy = current_energy
+        return best_tour, best_energy
+    else:
+        return current_tour, current_energy
+
+def perform_annealing(distances, altering_method = 'reverse', cooling_schedule = 'exponential_m', initial_temp=10000,
+                       alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7, chain_length = 1, init_tour = None, output_count = False):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
     init_tour       -  initial order of visiting cities   
     """
-
     count = 0
 
     num_cities = len(distances)
@@ -272,38 +302,43 @@ def perform_annealing(distances, altering_method = 'swap', cooling_schedule = 'e
     for k in range(max_iterations):
         count += 1
         if temperature < final_temp:
-            print('final temperature reached')
-            print(count)
+            # print('final temperature reached')
+            # print(f'iterations: {count}')
             break
+        
+        # explore landscape at this temperature for # of iterations = chain_length
+        for _ in range(chain_length):
+            new_tour = generate_neighbor(current_tour, altering_method)
+            new_energy = total_tour_distance(new_tour, distances)
+            energy_difference = new_energy - current_energy
 
-        new_tour = generate_neighbor(current_tour, altering_method)
+            # apply accept-reject condition according to Metropolis-Hastings
+            if energy_difference < 0 or random.random() < np.exp(-energy_difference / temperature):
+                current_tour = new_tour
+                current_energy = new_energy
 
-        new_energy = total_tour_distance(new_tour, distances)
-        energy_difference = new_energy - current_energy
+                best_tour = current_tour
+                best_energy = current_energy
+                
+                # # a possible improvement
+                # if current_energy < best_energy:
+                #     best_tour = current_tour.copy()
+                #     best_energy = current_energy
 
-        if energy_difference < 0 or random.random() < np.exp(-energy_difference / temperature):
-            current_tour = new_tour
-            current_energy = new_energy
+            temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
+                            t_max=initial_temp, t_min=final_temp)
+            temperature_over_iterations.append(temperature)
+            cost_over_iterations.append(best_energy)
 
-            best_tour = current_tour
-            best_energy = current_energy
-            
-            # # a possible improvement
-            # if current_energy < best_energy:
-            #     best_tour = current_tour.copy()
-            #     best_energy = current_energy
+    if output_count:
+        return best_tour, best_energy, cost_over_iterations, temperature_over_iterations, count
+    else:
+        return best_tour, best_energy, cost_over_iterations, temperature_over_iterations
+    
 
-        temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
-                           t_max=initial_temp, t_min=final_temp)
-        temperature_over_iterations.append(temperature)
-        cost_over_iterations.append(best_energy)
+###-----------------------------------------------------------------------------------------------------------------
 
-    return best_tour, best_energy, cost_over_iterations, temperature_over_iterations
-
-def estimate_conf_interval(data, conf_level=0.95):
-    return stats.t.interval(conf_level, len(data) - 1, loc=stats.describe(data).mean, scale=stats.sem(data))
-
-
+###-------------------------------- PLOTTERS -----------------------------------------------------------------------
 def plot_tour(tour, cities, permutation_method='swap'):
     """
     requires calling plt.show() after
@@ -317,7 +352,9 @@ def plot_tour(tour, cities, permutation_method='swap'):
     plt.title("TSP Solution for %s"%(permutation_method))
     plt.xlabel("X")
     plt.ylabel("Y")
+###-----------------------------------------------------------------------------------------------------------------
 
+###------------------------------ RUNNERS --------------------------------------------------------------------------
 
 def run_simulations(num_runs, distances, output = 'full', **kwargs):
     """
@@ -343,18 +380,6 @@ def run_simulations(num_runs, distances, output = 'full', **kwargs):
     elif output == 'fitness_statistics':
         return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
 
-def save_data(*args, file_path, column_names=None, header=None):
-    data = zip(*args)
-    with open(file_path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-
-        if header is not None:
-            writer.writerow(header)
-        if column_names is not None:
-            writer.writerow(column_names)
-
-        writer.writerows(data)
-
 def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = None, **kwargs):
     """
     performs annealing for several values of max_iterations_list
@@ -375,14 +400,14 @@ def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = 
 
     return means, stds, conf_intervals
 
-def run_concurrent(func, **kwargs):
+def run_concurrent(func, param_sets):
     # obtains number of cores and threads (# of cores * 2)
     num_processes = multiprocessing.cpu_count() * 2
     
     start_time = time.time()
     with multiprocessing.Pool(processes=num_processes) as pool:
-        # submit tasks to the pool
-        results = [pool.apply_async(func, kwds=kwargs) for _ in range(3)]
+        # submit tasks to the pool for each parameter set
+        results = [pool.apply_async(func, kwds=params) for params in param_sets]
         
         # wait for all processes to finish and save output
         output = [res.get() for res in results]
@@ -393,22 +418,66 @@ def run_concurrent(func, **kwargs):
 
     return output
 
+def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, save_file_path=None, **kwargs):
+    """
+    performs annealing for several values of max_iterations_list using concurrency
 
+    return: mean, std and confidence interval corresponding to each value in max_iterations_list
+    """
+    param_sets = []
+
+    for max_i in max_iterations_list:
+        params = {
+            'num_runs': num_runs,
+            'distances': distances,
+            'max_iterations': max_i,
+            'output': 'fitness_statistics'
+        }
+        for key, value in kwargs.items():
+            params[key] = value
+        param_sets.append(params)
+
+    output = run_concurrent(run_simulations, param_sets)
+
+    means = [result[0] for result in output]
+    stds = [result[1] for result in output]
+    conf_intervals = [result[2] for result in output]
+
+    if save_file_path is not None:
+        save_data(means, stds, conf_intervals, file_path=save_file_path, column_names=['Mean Distance', 'STD', 'CI'])
+
+    return means, stds, conf_intervals
+
+###-----------------------------------------------------------------------------------------------------------------
+
+##--------------------------------- TESTING ------------------------------------------------------------------------
 def main():
-    """ testing """
     script_directory = os.path.dirname(os.path.abspath(__file__))
     filepath = os.path.join(script_directory, 'TSP-Configurations/eil51.tsp.txt')
 
     cities = load_graph(filepath)
     distances = calculate_distances(cities)
 
-    # _ , _, _, _  = perform_annealing(distances=distances, final_temp = 1)
+    # _ , best_energy, costs, temps  = perform_annealing(distances=distances, cooling_schedule='linear_m', alpha=0.999, chain_length=10)
+    # print(best_energy)
+    # plt.plot(temps)
+    # plt.figure()
+    # plt.plot(costs)
+    # plt.show()
+
     # result = run_simulations(num_runs = 10, distances=distances, output='fitness_statistics', 
-    #                                     altering_method = 'reverse', cooling_schedule = 'linear_m')
+    #                                     altering_method = 'reverse', cooling_schedule = 'linear_m', final_temp=1E-6, alpha=1 - 1E-5)
     # print(result)
-    # results = run_vary_maxiter(20, distances, [100, 1000, 10000])
     
-    # run_vary_maxiter(10, distances, [100, 1000], save_file_path='output_test.csv')
+    # results = run_vary_maxiter(20, distances, [100, 1000, 10000])
+    # print()
+    
+    filepath_gendata = os.path.join(script_directory, 'generated_data/output_test.csv')
+    results = run_vary_maxiter_concurrent(10, distances, [100, 1000, 10000], save_file_path=filepath_gendata,
+                                          cooling_schedule = 'linear_m', final_temp=1E-7, alpha=1 - 1E-5)
+    print()
+
+    
 
 
 
