@@ -287,7 +287,7 @@ def perform_annealing(distances, altering_method = 'reverse', cooling_schedule =
     else:
         current_tour = init_tour
 
-    #random.shuffle(current_state)
+    # random.shuffle(current_tour)
 
     # practically a cost variable, longer tour -> higher energy
     current_energy = total_tour_distance(current_tour, distances)
@@ -352,6 +352,18 @@ def plot_tour(tour, cities, permutation_method='swap'):
     plt.title("TSP Solution for %s"%(permutation_method))
     plt.xlabel("X")
     plt.ylabel("Y")
+
+def plot_dist_and_temp_local(costs, temps, title=None):
+    fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+    x = range(len(costs))
+    axs[0].set_title('Distance over iterations')
+    axs[0].plot(x, costs)
+    axs[1].set_title('Temperature')
+    axs[1].plot(x, temps)
+    if title is not None:
+        fig.suptitle(title)
+    plt.show()
+
 ###-----------------------------------------------------------------------------------------------------------------
 
 ###------------------------------ RUNNERS --------------------------------------------------------------------------
@@ -448,20 +460,7 @@ def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, save_f
 
     return means, stds, conf_intervals
 
-###-----------------------------------------------------------------------------------------------------------------
-
-##--------------------------------- TESTING ------------------------------------------------------------------------
-def plot_dist_and_temp_local(costs, temps, title=None):
-    fig, axs = plt.subplots(1, 2, figsize=(10, 4))
-    axs[0].set_title('Distance over iterations')
-    axs[0].plot(costs)
-    axs[1].set_title('Temperature')
-    axs[1].plot(temps)
-    if title is not None:
-        fig.suptitle(title)
-    plt.show()
-
-def wrappe_func(**kwargs):
+def wrapper_annealing(**kwargs):
     _ , best_energy, costs, temps, count = perform_annealing(**kwargs, output_count=True)
     schedule = kwargs['cooling_schedule']
     print('cooling schedule: ', schedule)
@@ -469,9 +468,30 @@ def wrappe_func(**kwargs):
     print('performed iterations:', count)
     plot_dist_and_temp_local(costs, temps, f'Cooling schedule: {schedule}')
 
+def examine_schedules_dynamics(distances, schedules = ['linear_m', 'exponential_m', 'logarithmic_m', 'linear_a', 'quadratic_a'], **kwargs):
+    kwargs_list = []
+    for schedule in schedules:
+        params = ({   
+            'distances': distances,
+            'cooling_schedule': schedule,
+            }
+        )
+        for key, value in kwargs.items():
+            params[key] = value
+        kwargs_list.append(params)
+
+
+    output = run_concurrent(wrapper_annealing, kwargs_list)
+    
+    return output
+
+###-----------------------------------------------------------------------------------------------------------------
+
+##--------------------------------- TESTING ------------------------------------------------------------------------
+
 def main():
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    filepath = os.path.join(script_directory, 'TSP-Configurations/eil51.tsp.txt')
+    filepath = os.path.join(script_directory, 'TSP-Configurations/a280.tsp.txt')
 
     cities = load_graph(filepath)
     distances = calculate_distances(cities)
@@ -496,24 +516,7 @@ def main():
     #                                       cooling_schedule = 'linear_m', final_temp=1E-7, alpha=1 - 1E-5)
     # print()
 
-
-    schedules = ['linear_m', 'exponential_m', 'logarithmic_m', 'linear_a', 'quadratic_a']
-
-    kwargs_list = []
-    for schedule in schedules:
-        kwargs_list.append({   
-                'distances': distances,
-                'altering_method': 'reverse',
-                'max_iterations': 500,
-                'final_temp': 1E-5,
-                'alpha': 1 - 1E-4,
-                'cooling_schedule': schedule,
-            }
-        )
-
-
-    output = run_concurrent(wrappe_func, kwargs_list)
-    
+    examine_schedules_dynamics(distances, max_iterations=10000, final_temp=1E-5, alpha=1 - 1E-5)
 
 
 
