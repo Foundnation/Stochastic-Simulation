@@ -223,6 +223,11 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
     t_max = initial temperature
     t_min = final temperature
     """
+
+    if method not in ['linear_m', 'linear_a', 'quadratic_a', 'quadratic_m', 
+                         'exponential_m', 'dynamic_m', 'logarithmic_m']:
+        raise Exception(f'cooling schedule {method} is not implemented')    
+    
         
     if method == 'linear_m':
         # linear multiplicative cooling
@@ -391,6 +396,32 @@ def run_simulations(num_runs, distances, output = 'full', **kwargs):
         return final_fitnesses
     elif output == 'fitness_statistics':
         return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
+    
+def run_simulations_concurrent(num_runs, distances, output = 'full', **kwargs):
+    """
+    calls perform_annealing for num_runs times and outputs chosen data
+    **kwargs are optional additional parameters that will be passed to perform_annealing
+
+    """
+    tours = []
+    fitness_lists = []
+    temperatures = []
+    final_fitnesses = []
+    for i in range(num_runs):
+        best_tour, _, fitness, temper = perform_annealing(distances=distances, **kwargs)
+        tours.append(best_tour)
+        fitness_lists.append(fitness)
+        temperatures.append(temper)
+        final_fitnesses.append(fitness[-1])
+    
+    if output == 'full':    
+        return tours, fitness_lists, temperatures
+    elif output == 'final_fitnesses':
+        return final_fitnesses
+    elif output == 'fitness_statistics':
+        return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
+    
+
 
 def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = None, **kwargs):
     """
@@ -460,6 +491,12 @@ def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, save_f
 
     return means, stds, conf_intervals
 
+def run_vary_schedules(num_runs, distances, schedules, save_file_path=None, **kwargs):
+    return
+
+def run_vary_chain_length():
+    return
+
 def wrapper_annealing(**kwargs):
     _ , best_energy, costs, temps, count = perform_annealing(**kwargs, output_count=True)
     schedule = kwargs['cooling_schedule']
@@ -468,7 +505,8 @@ def wrapper_annealing(**kwargs):
     print('performed iterations:', count)
     plot_dist_and_temp_local(costs, temps, f'Cooling schedule: {schedule}')
 
-def examine_schedules_dynamics(distances, schedules = ['linear_m', 'exponential_m', 'logarithmic_m', 'linear_a', 'quadratic_a'], **kwargs):
+def examine_schedules_dynamics(distances, schedules = 
+                               ['linear_m', 'exponential_m', 'logarithmic_m', 'linear_a', 'quadratic_a'], **kwargs):
     kwargs_list = []
     for schedule in schedules:
         params = ({   
@@ -516,7 +554,13 @@ def main():
     #                                       cooling_schedule = 'linear_m', final_temp=1E-7, alpha=1 - 1E-5)
     # print()
 
-    examine_schedules_dynamics(distances, max_iterations=10000, final_temp=1E-5, alpha=1 - 1E-5)
+    # examine_schedules_dynamics(distances, max_iterations=10000, final_temp=1E-5, alpha=1 - 1E-5)
+
+    schedules = ['linear_a', 'linear_m']
+    output = run_vary_schedules(num_runs=20, distances=distances, schedules=schedules, 
+                        max_iterations=1000, final_temp=1E-5, alpha=1 - 1E-5)
+    
+
 
 
 
