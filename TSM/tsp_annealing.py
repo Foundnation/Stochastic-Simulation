@@ -199,8 +199,15 @@ def two_opt(current_state, distances):
                 break  # Start over if improvement is found
     return current_state
     
+###-------------------------------------------------------------------------------------------------
+
+###--------------------------------- Statistics ----------------------------------------------------
 def estimate_conf_interval(data, conf_level=0.95):
     return stats.t.interval(conf_level, len(data) - 1, loc=stats.describe(data).mean, scale=stats.sem(data))
+
+def perform_tests():
+    return
+
 ###-------------------------------------------------------------------------------------------------
 
 ###---------------- SIMULATED ANNEALING ------------------------------------------------------------
@@ -396,11 +403,10 @@ def run_simulations(num_runs, distances, output = 'full', **kwargs):
         return final_fitnesses
     elif output == 'fitness_statistics':
         return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
-    
+
+ # TEMPLATE, NOT IMPLEMENTED   
 def run_simulations_concurrent(num_runs, distances, output = 'full', **kwargs):
     """
-    calls perform_annealing for num_runs times and outputs chosen data
-    **kwargs are optional additional parameters that will be passed to perform_annealing
 
     """
     tours = []
@@ -523,11 +529,9 @@ def examine_schedules_dynamics(distances, schedules =
     
     return output
 
-def boxplots():
-    return
 ###-----------------------------------------------------------------------------------------------------------------
 
-##--------------------------------- TESTING ------------------------------------------------------------------------
+##--------------------------------- CODE TESTING ------------------------------------------------------------------------
 
 def main():
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -558,11 +562,11 @@ def main():
 
     # examine_schedules_dynamics(distances, max_iterations=10000, final_temp=1E-5, alpha=1 - 1E-5)
 
-    schedules = ['linear_a', 'linear_m']
-    output = run_vary_schedules(num_runs=20, distances=distances, schedules=schedules, 
-                        max_iterations=1000, final_temp=1E-5, alpha=1 - 1E-5)
+    # schedules = ['linear_a', 'linear_m']
+    # output = run_vary_schedules(num_runs=20, distances=distances, schedules=schedules, 
+    #                     max_iterations=1000, final_temp=1E-5, alpha=1 - 1E-5)
     
-
+    
 
 
 
