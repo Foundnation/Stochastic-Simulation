@@ -217,8 +217,34 @@ def two_opt(current_state, distances):
 def estimate_conf_interval(data, conf_level=0.95):
     return stats.t.interval(conf_level, len(data) - 1, loc=stats.describe(data).mean, scale=stats.sem(data))
 
-def perform_tests():
-    return
+def plot_pairwise_ttest(data, methods, input_type='Mean Distance'):
+    num_methods = len(data)
+    p_values_matrix = np.empty((num_methods, num_methods), dtype=object)
+
+    # pairwise t-tests for each position
+    for i in range(num_methods):
+        for j in range(num_methods):
+            _, p_value = stats.ttest_ind(data[i], data[j])
+            p_values_matrix[i, j] = round(p_value, 4)  
+    plt.figure(figsize=(8, 6))
+    plt.imshow(np.array(p_values_matrix, dtype=float), cmap='coolwarm', interpolation='nearest')
+
+    # add significant markers
+    for i in range(num_methods):
+        for j in range(num_methods):
+            if p_values_matrix[i, j] < 0.05:  
+                plt.text(j, i, f"{p_values_matrix[i, j]}*", ha='center', va='center', color='black')
+            else:
+                plt.text(j, i, str(p_values_matrix[i, j]), ha='center', va='center', color='black')
+
+    plt.colorbar(label='p-value')
+    plt.title(f'Pairwise t-test p-values for {input_type}')
+    plt.xticks(np.arange(len(methods)), methods)
+    plt.yticks(np.arange(len(methods)), methods)
+    plt.xlabel('Methods')
+    plt.ylabel('Methods')
+    plt.grid(False)
+    plt.show()
 
 ###-------------------------------------------------------------------------------------------------
 
@@ -233,7 +259,8 @@ def generate_neighbor(current_state, method):
     
     return new_state
 
-def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
+def cool(current_temp, alpha, method, current_step, max_iter,
+                                 t_max, t_min, acceptance_ratio, adaptivity=100):
     """
     implementation of cooling schedules
     alpha - cooling rate
@@ -244,7 +271,7 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
     """
 
     if method not in ['linear_m', 'linear_a', 'quadratic_a', 'quadratic_m', 
-                         'exponential_m', 'dynamic_m', 'logarithmic_m']:
+                         'exponential_m', 'dynamic_m', 'logarithmic_m', 'adaptive_m']:
         raise Exception(f'cooling schedule {method} is not implemented')    
     
         
@@ -274,6 +301,16 @@ def cool(current_temp, alpha, method, current_step, max_iter, t_max, t_min):
     if method == 'logarithmic_m':
         # logarithmical multiplicative cooling
         new_temp = t_max / (1+alpha * np.log(current_step + 1))
+
+    if method == 'adaptive_m':
+        if current_step % 5 == 0 and current_step != 0 and acceptance_ratio != 0:
+            if acceptance_ratio < 0.2 and alpha * 0.9 < 1:
+                alpha += 0.9
+            elif acceptance_ratio > 0.8 and alpha * 0.9 < 1:
+                alpha *= 1.1
+
+        alpha = min(max(alpha, 0), 1)
+        new_temp = current_temp * alpha**current_step
    
     return new_temp
 
@@ -298,13 +335,15 @@ def accept_reject(new_energy, current_energy, new_tour, temperature, current_tou
 
 def perform_annealing(distances, altering_method = 'reverse', cooling_schedule = 'exponential_m', 
                       initial_temp=10000, alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7,
-                     chain_length = 1, init_tour = None, output_count = False, mesa = False):
+                     chain_length = 1, init_tour = None, output_count = False, mesa = False, mesa_init_steps=500):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
     init_tour       -  initial order of visiting cities   
     """
     count = 0
+    accepted_moves = 0 
+    rejected_moves = 0 
 
     num_cities = len(distances)
     if init_tour == None:
@@ -339,24 +378,33 @@ def perform_annealing(distances, altering_method = 'reverse', cooling_schedule =
 
             # apply accept-reject condition according to Metropolis-Hastings
             if energy_difference < 0 or random.random() < np.exp(-energy_difference / temperature):
+                accepted_moves += 1 
                 current_tour = new_tour
                 current_energy = new_energy
                 
-                if mesa:
+                if mesa == True and k > mesa_init_steps:
                     if current_energy < best_energy:
                         best_tour = current_tour.copy()
                         best_energy = current_energy
                 else:
                     best_tour = current_tour
                     best_energy = current_energy
+            else:
+                rejected_moves += 1
 
-            temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
-                            t_max=initial_temp, t_min=final_temp)
-            temperature_over_iterations.append(temperature)
-            cost_over_iterations.append(best_energy)
+        if rejected_moves != 0:
+            acceptance_ratio = accepted_moves / (accepted_moves + rejected_moves)
+        else:
+            acceptance_ratio = 0
+
+        temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
+                        t_max=initial_temp, t_min=final_temp, acceptance_ratio=acceptance_ratio, adaptivity=100)
+        temperature_over_iterations.append(temperature)
+        cost_over_iterations.append(best_energy)
 
     if output_count:
-        return best_tour, best_energy, cost_over_iterations, temperature_over_iterations, count
+        counts = [count, accepted_moves, rejected_moves]
+        return best_tour, best_energy, cost_over_iterations, temperature_over_iterations, counts
     else:
         return best_tour, best_energy, cost_over_iterations, temperature_over_iterations
     
@@ -456,7 +504,7 @@ def run_concurrent(func, param_sets):
 
     return output
 
-def run_simulations_concurrent(num_runs, distances, output='fitness_statistics', **kwargs):
+def run_simulations_concurrent(num_runs, distances, output, **kwargs):
     """
     Runs simulations concurrently using the run_concurrent approach.
     """
@@ -468,7 +516,10 @@ def run_simulations_concurrent(num_runs, distances, output='fitness_statistics',
         tours = [elem[0] for elem in result]
         fitness_lists = [elem[2] for elem in result]
         temperatures = [elem[3] for elem in result]
-        return tours, fitness_lists, temperatures
+        counts = None
+        if len(result) > 4:
+            counts = [elem[4] for elem in result]
+        return tours, fitness_lists, temperatures, counts
     
     elif output == 'final_fitnesses':
         final_dist_list = [elem[2][-1] for elem in result]
@@ -539,7 +590,18 @@ def run_vary_maxiter_concurrent_sims(num_runs, distances, max_iterations_list, o
 
     #sim_output = run_concurrent(run_simulations, param_sets)
 
-    if output == 'fitness_statistics':
+    if output == 'full':
+        means = [result[0] for result in sim_output]
+        stds = [result[1] for result in sim_output]
+        conf_intervals = [result[2] for result in sim_output]
+
+        if save_file_path is not None:
+            save_data(means, stds, conf_intervals, file_path=save_file_path, column_names=['Mean Distance', 'STD', 'CI'])
+
+        end_time = time.time()
+        print(f'Time taken (conc): {end_time - start_time}')
+        return means, stds, conf_intervals
+    elif output == 'fitness_statistics':
         means = [result[0] for result in sim_output]
         stds = [result[1] for result in sim_output]
         conf_intervals = [result[2] for result in sim_output]
@@ -640,11 +702,13 @@ def main():
     # time_taken= end_time - start_time
     # print(f"Time taken with NO concurrency: {time_taken} seconds")
 
-    results1 = run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=20000, 
-                         final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m', mesa=False)
-    results2 = run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=20000, 
-                         final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m', mesa=True)
-    print()
+    # results1 = run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=20000, 
+    #                       final_temp=1E-4, alpha=1-(1E-5), cooling_schedule='dynamic_m', mesa=False)
+    # #random.seed(42)
+    # #init_tour = random.shuffle(np.arange(280))
+    # results2 = run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=20000, 
+    #                      final_temp=1E-4, alpha=1-(1E-5), cooling_schedule='dynamic_m', mesa=True)
+    # print()
 
     #results = run_vary_maxiter_concurrent(20, distances, [100, 1000, 10000], output='final_fitnesses')
 
@@ -653,6 +717,9 @@ def main():
     # end = time.time()
     # print(end - start)
 
+    result_acceptance = run_simulations_concurrent(10, distances, max_iterations=10000, output='full',
+                                                final_temp=1E-5, cooling_schedule='linear_m', alpha=1-(1E-5), output_count=True)
+    print()
 
 if __name__ == '__main__':
     main()
