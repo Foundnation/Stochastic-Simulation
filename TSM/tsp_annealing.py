@@ -298,7 +298,7 @@ def accept_reject(new_energy, current_energy, new_tour, temperature, current_tou
 
 def perform_annealing(distances, altering_method = 'reverse', cooling_schedule = 'exponential_m', 
                       initial_temp=10000, alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7,
-                     chain_length = 1, init_tour = None, output_count = False, save_best = False):
+                     chain_length = 1, init_tour = None, output_count = False, mesa = False):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
@@ -345,7 +345,7 @@ def perform_annealing(distances, altering_method = 'reverse', cooling_schedule =
                 best_tour = current_tour
                 best_energy = current_energy
                 
-                if save_best:
+                if mesa:
                     if current_energy < best_energy:
                         best_tour = current_tour.copy()
                         best_energy = current_energy
@@ -417,7 +417,6 @@ def run_simulations(num_runs, distances, output = 'full', **kwargs):
     elif output == 'fitness_statistics':
         return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
 
-
 def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = None, **kwargs):
     """
     performs annealing for several values of max_iterations_list
@@ -466,10 +465,15 @@ def run_simulations_concurrent(num_runs, distances, output='fitness_statistics',
     result = run_concurrent(perform_annealing, param_sets)
 
     if output == 'full':    
-        raise Exception(NotImplementedError)
+        tours = [elem[0] for elem in result]
+        fitness_lists = [elem[2] for elem in result]
+        temperatures = [elem[3] for elem in result]
+        return tours, fitness_lists, temperatures
+    
     elif output == 'final_fitnesses':
         final_dist_list = [elem[2][-1] for elem in result]
         return final_dist_list
+    
     elif output == 'fitness_statistics':
         final_dist_list = [elem[2][-1] for elem in result]
         return np.mean(final_dist_list), np.std(final_dist_list), estimate_conf_interval(data=final_dist_list)
@@ -636,16 +640,16 @@ def main():
     # time_taken= end_time - start_time
     # print(f"Time taken with NO concurrency: {time_taken} seconds")
 
-    # run_simulations_concurrent(20, distances, output='fitness_statistics', max_iterations=10000, 
-    #                     final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m')
-
+    run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=10000, 
+                         final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m')
+    print()
 
     #results = run_vary_maxiter_concurrent(20, distances, [100, 1000, 10000], output='final_fitnesses')
 
-    start = time.time()
-    results2 = run_vary_maxiter_concurrent_sims(20, distances, [100, 1000, 10000], output='final_fitnesses')
-    end = time.time()
-    print(end - start)
+    # start = time.time()
+    # results2 = run_vary_maxiter_concurrent_sims(20, distances, [100, 1000, 10000], output='final_fitnesses')
+    # end = time.time()
+    # print(end - start)
 
 
 if __name__ == '__main__':
