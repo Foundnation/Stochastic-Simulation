@@ -341,14 +341,14 @@ def perform_annealing(distances, altering_method = 'reverse', cooling_schedule =
             if energy_difference < 0 or random.random() < np.exp(-energy_difference / temperature):
                 current_tour = new_tour
                 current_energy = new_energy
-
-                best_tour = current_tour
-                best_energy = current_energy
                 
                 if mesa:
                     if current_energy < best_energy:
                         best_tour = current_tour.copy()
                         best_energy = current_energy
+                else:
+                    best_tour = current_tour
+                    best_energy = current_energy
 
             temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
                             t_max=initial_temp, t_min=final_temp)
@@ -640,8 +640,10 @@ def main():
     # time_taken= end_time - start_time
     # print(f"Time taken with NO concurrency: {time_taken} seconds")
 
-    run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=10000, 
-                         final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m')
+    results1 = run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=20000, 
+                         final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m', mesa=False)
+    results2 = run_simulations_concurrent(10, distances, output='fitness_statistics', max_iterations=20000, 
+                         final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m', mesa=True)
     print()
 
     #results = run_vary_maxiter_concurrent(20, distances, [100, 1000, 10000], output='final_fitnesses')
