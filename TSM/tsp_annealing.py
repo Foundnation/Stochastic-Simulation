@@ -21,13 +21,25 @@ def load_graph(filename):
 
     return cities
 
-def save_data(*args, file_path, column_names=None, header=None):
+def save_data_old(*args, file_path, column_names=None, header=None):
     data = zip(*args)
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
 
         if header is not None:
             writer.writerow(header)
+        if column_names is not None:
+            writer.writerow(column_names)
+
+        writer.writerows(data)
+
+def save_data(data_list, file_path, column_names=None, header=None):
+    data = zip(*data_list)
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        if header is not None:
+            writer.writerow([header])
         if column_names is not None:
             writer.writerow(column_names)
 
@@ -284,8 +296,9 @@ def accept_reject(new_energy, current_energy, new_tour, temperature, current_tou
     else:
         return current_tour, current_energy
 
-def perform_annealing(distances, altering_method = 'reverse', cooling_schedule = 'exponential_m', initial_temp=10000,
-                       alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7, chain_length = 1, init_tour = None, output_count = False):
+def perform_annealing(distances, altering_method = 'reverse', cooling_schedule = 'exponential_m', 
+                      initial_temp=10000, alpha=0.999, max_iterations=int(1E4), final_temp = 1E-7,
+                     chain_length = 1, init_tour = None, output_count = False, save_best = False):
     """
     Optimizes tour length using simulated annealing.
     altering_method -  determines how tour will be changed at each iteration
@@ -332,10 +345,10 @@ def perform_annealing(distances, altering_method = 'reverse', cooling_schedule =
                 best_tour = current_tour
                 best_energy = current_energy
                 
-                # # a possible improvement
-                # if current_energy < best_energy:
-                #     best_tour = current_tour.copy()
-                #     best_energy = current_energy
+                if save_best:
+                    if current_energy < best_energy:
+                        best_tour = current_tour.copy()
+                        best_energy = current_energy
 
             temperature = cool(temperature, alpha, method=cooling_schedule, current_step=k, max_iter=max_iterations, 
                             t_max=initial_temp, t_min=final_temp)
@@ -404,30 +417,6 @@ def run_simulations(num_runs, distances, output = 'full', **kwargs):
     elif output == 'fitness_statistics':
         return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
 
- # TEMPLATE, NOT IMPLEMENTED   
-def run_simulations_concurrent(num_runs, distances, output = 'full', **kwargs):
-    """
-
-    """
-    tours = []
-    fitness_lists = []
-    temperatures = []
-    final_fitnesses = []
-    for i in range(num_runs):
-        best_tour, _, fitness, temper = perform_annealing(distances=distances, **kwargs)
-        tours.append(best_tour)
-        fitness_lists.append(fitness)
-        temperatures.append(temper)
-        final_fitnesses.append(fitness[-1])
-    
-    if output == 'full':    
-        return tours, fitness_lists, temperatures
-    elif output == 'final_fitnesses':
-        return final_fitnesses
-    elif output == 'fitness_statistics':
-        return np.mean(final_fitnesses), np.std(final_fitnesses), estimate_conf_interval(data=final_fitnesses)
-    
-
 
 def run_vary_maxiter(num_runs, distances, max_iterations_list, save_file_path = None, **kwargs):
     """
@@ -463,11 +452,29 @@ def run_concurrent(func, param_sets):
 
     end_time = time.time()
     time_taken_concurrency = end_time - start_time
-    print(f"Time taken with concurrency: {time_taken_concurrency} seconds")
+
+    # print(f"Time taken (conc): {time_taken_concurrency} seconds")
 
     return output
 
-def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, save_file_path=None, **kwargs):
+def run_simulations_concurrent(num_runs, distances, output='fitness_statistics', **kwargs):
+    """
+    Runs simulations concurrently using the run_concurrent approach.
+    """
+    param_sets = [{'distances': distances, **kwargs} for _ in range(num_runs)]
+    
+    result = run_concurrent(perform_annealing, param_sets)
+
+    if output == 'full':    
+        raise Exception(NotImplementedError)
+    elif output == 'final_fitnesses':
+        final_dist_list = [elem[2][-1] for elem in result]
+        return final_dist_list
+    elif output == 'fitness_statistics':
+        final_dist_list = [elem[2][-1] for elem in result]
+        return np.mean(final_dist_list), np.std(final_dist_list), estimate_conf_interval(data=final_dist_list)
+    
+def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, output='fitness_statistics', save_file_path=None, **kwargs):
     """
     performs annealing for several values of max_iterations_list using concurrency
 
@@ -480,28 +487,84 @@ def run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, save_f
             'num_runs': num_runs,
             'distances': distances,
             'max_iterations': max_i,
-            'output': 'fitness_statistics'
+            'output': output
         }
         for key, value in kwargs.items():
             params[key] = value
         param_sets.append(params)
+    
 
-    output = run_concurrent(run_simulations, param_sets)
+    sim_output = run_concurrent(run_simulations, param_sets)
 
-    means = [result[0] for result in output]
-    stds = [result[1] for result in output]
-    conf_intervals = [result[2] for result in output]
+    if output == 'fitness_statistics':
+        means = [result[0] for result in sim_output]
+        stds = [result[1] for result in sim_output]
+        conf_intervals = [result[2] for result in sim_output]
 
-    if save_file_path is not None:
-        save_data(means, stds, conf_intervals, file_path=save_file_path, column_names=['Mean Distance', 'STD', 'CI'])
+        if save_file_path is not None:
+            save_data(means, stds, conf_intervals, file_path=save_file_path, column_names=['Mean Distance', 'STD', 'CI'])
 
-    return means, stds, conf_intervals
+        return means, stds, conf_intervals
+    
+    elif output == 'final_fitnesses':
+        return sim_output
+
+def run_vary_maxiter_concurrent_sims(num_runs, distances, max_iterations_list, output='fitness_statistics', save_file_path=None, **kwargs):
+    """
+    performs annealing for several values of max_iterations_list using concurrency
+
+    return: mean, std and confidence interval corresponding to each value in max_iterations_list
+    """
+    start_time = time.time()
+    param_sets = []
+
+    for max_i in max_iterations_list:
+        params = {
+            #'num_runs': num_runs,
+            #'distances': distances,
+            'max_iterations': max_i,
+            'output': output
+        }
+        for key, value in kwargs.items():
+            params[key] = value
+        param_sets.append(params)
+    
+    sim_output = []
+    for param in param_sets:
+        sim_output.append(run_simulations_concurrent(num_runs, distances, **param))
+
+    #sim_output = run_concurrent(run_simulations, param_sets)
+
+    if output == 'fitness_statistics':
+        means = [result[0] for result in sim_output]
+        stds = [result[1] for result in sim_output]
+        conf_intervals = [result[2] for result in sim_output]
+
+        if save_file_path is not None:
+            save_data(means, stds, conf_intervals, file_path=save_file_path, column_names=['Mean Distance', 'STD', 'CI'])
+
+        end_time = time.time()
+        print(f'Time taken (conc): {end_time - start_time}')
+        return means, stds, conf_intervals
+    
+    elif output == 'final_fitnesses':
+        end_time = time.time()
+        print(f'Time taken (conc): {end_time - start_time}')
+        return sim_output
 
 def run_vary_schedules(num_runs, distances, schedules, save_file_path=None, **kwargs):
     return
 
 def run_vary_chain_length():
     return
+
+def run_vary_parameter_and_maxiter(num_runs, distances, max_iterations_list, variable_parameter_values: dict, **kwargs):
+    results = {}
+    for param in variable_parameter_values.get(0):
+        output = run_vary_maxiter_concurrent(num_runs, distances, max_iterations_list, param, **kwargs)
+        results[param] = output
+    
+    return results
 
 def wrapper_annealing(**kwargs):
     _ , best_energy, costs, temps, count = perform_annealing(**kwargs, output_count=True)
@@ -566,8 +629,23 @@ def main():
     # output = run_vary_schedules(num_runs=20, distances=distances, schedules=schedules, 
     #                     max_iterations=1000, final_temp=1E-5, alpha=1 - 1E-5)
     
-    
+    # start_time = time.time()
+    # run_simulations(20, distances, output='fitness_statistics', max_iterations=10000, 
+    #                     final_temp=1E-4, alpha=1-1E-4, cooling_schedule='linear_m')
+    # end_time = time.time()
+    # time_taken= end_time - start_time
+    # print(f"Time taken with NO concurrency: {time_taken} seconds")
 
+    # run_simulations_concurrent(20, distances, output='fitness_statistics', max_iterations=10000, 
+    #                     final_temp=1E-4, alpha=1-(1E-4), cooling_schedule='linear_m')
+
+
+    #results = run_vary_maxiter_concurrent(20, distances, [100, 1000, 10000], output='final_fitnesses')
+
+    start = time.time()
+    results2 = run_vary_maxiter_concurrent_sims(20, distances, [100, 1000, 10000], output='final_fitnesses')
+    end = time.time()
+    print(end - start)
 
 
 if __name__ == '__main__':
