@@ -55,6 +55,38 @@ This notebook extends the exploration of Queueing Theory by delving deeper into 
 
 This notebook provides the theoretical expected waiting time and delay probabilitiy and some visualizations.
 
+# 3. Traveling Salesman Problem Solver
+
+This repository contains implementations and experimental setups for solving the Traveling Salesman Problem (TSP) using Simulated Annealing algorithm.
+
+## Contents
+
+- `tsp_annealing.py`: Main source file containing most of the implemented functions for the Annealing algorithm, data management, and concurrency.
+- `tsp_notebook.ipynb`: Jupyter notebook containing experimental setups for calculations and some plots related to the TSP.
+- `analyse_data.ipynb`: Jupyter notebook that loads generated data from `tsp_notebook.ipynb` and performs data analysis and additional plotting.
+- `generated_data/`: Folder containing generated data for the TSP.
+
+## Chapter 3: Simulated Annealing for Solving the Traveling Salesman Problem
+
+Simulated Annealing is a metaheuristic algorithm used to find an approximate solution to optimization problems. It's particularly effective for solving combinatorial optimization problems such as the Traveling Salesman Problem (TSP).
+
+### Implementation Overview
+
+The `tsp_annealing.py` file serves as the core implementation for the Simulated Annealing algorithm tailored to solve the TSP. This file contains the necessary functions to:
+
+- Define the TSP problem.
+- Implement the Annealing algorithm with appropriate cooling schedules and permutation operators.
+- Manage data related to cities, distances, and permutations.
+- Handle concurrency for improved performance.
+
+
+### Usage
+
+To utilize the implementation and perform experiments:
+
+1. Access `tsp_notebook.ipynb` for setting up and executing various experiments related to solving the TSP using Simulated Annealing.
+2. For in-depth analysis and additional plotting, refer to `analyse_data.ipynb` after generating data in the notebook.
+
 
 
 ## Dependencies
