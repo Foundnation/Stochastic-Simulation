@@ -376,7 +376,7 @@ def perform_annealing(distances, altering_method = 'reverse', cooling_schedule =
             new_energy = total_tour_distance(new_tour, distances)
             energy_difference = new_energy - current_energy
 
-            # apply accept-reject condition according to Metropolis-Hastings
+            # apply accept-reject condition according to Metropolis
             if energy_difference < 0 or random.random() < np.exp(-energy_difference / temperature):
                 accepted_moves += 1 
                 current_tour = new_tour
